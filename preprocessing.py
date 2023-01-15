@@ -6,12 +6,7 @@ import numpy as np
 
 class PreProcessing:
     
-    def __init__(self, dataset,target,additional_cols_list=None):
-        self.dataset = dataset
-        self.target=target
-        self.additional_cols_list=additional_cols_list
-    
-    def preprocess_data(self):
+    def preprocess_data(dataset,target_name,additional_cols_list=None):
         """
         This module get data from user and preprocess the data according to the form acceptable to 
         learning models
@@ -39,13 +34,11 @@ class PreProcessing:
             When function is provided, trains the chosen classifier(s).
         """
 
-        loaded_data=self.load_data()
-        target=self.target
+        loaded_data=PreProcessing.load_data(dataset)
+        target = loaded_data.loc[:,target_name]
+        additional_cols=loaded_data.loc[:, additional_cols_list]
 
-        target = loaded_data.loc[:, self.target]
-        additional_cols=loaded_data.loc[:, self.additional_cols_list]
-
-        features_data=loaded_data.drop([self.target], axis = 1)
+        features_data=loaded_data.drop([target_name], axis = 1)
         numeric_data=PreProcessing.remove_nonnumeric_data(features_data)
         non_duplicate_data=PreProcessing.remove_duplicate_columns(numeric_data)
         non_varied_data=PreProcessing.remove_nonvariance_data(non_duplicate_data,0.1)
@@ -55,8 +48,8 @@ class PreProcessing:
 
         return cleaned_dataset,train, validate, test
 
-    def load_data(self):        
-        data = pd.read_excel(self.dataset, index_col=0)  
+    def load_data(dataset):        
+        data = pd.read_excel(dataset, index_col=0)  
         return data
 
     def remove_nonnumeric_data(dataset):
