@@ -1,0 +1,10 @@
+features:
+
+advanced ml in 1 to 3 lines
+cross platform available: pip, github, conda, apt, brew, mamba, linux, windows, macos, android
+interative: python package, easycheml cli, easycheml gui (linux, windows, macos)
+advanced data visualisation: manuscript ready images
+system independent engine: local processor, google colab, kaggle
+not a blackbox: complete logging of processes 
+algorithms: ml based, advanced dl algorithms
+extend limit of data: synthetic data generation
