@@ -31,7 +31,7 @@ def build_ml_model():
 
 class feature_engineering:
     
-    def feature_thru_wrapper(dataset:str,target_name:str,feat_selc_dirn:str,num_features:int,model:callable,score_param:str,cross_val:int):
+    def feature_thru_wrapper(dataset:str,target_name:str,feat_selc_dirn:str,num_min_features:int,num_max_features:int,model:callable,score_param:str,cross_val:int):
         """
         Function to select features through feature selection method
 
@@ -48,43 +48,55 @@ class feature_engineering:
         """
         
         from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+        from mlxtend.feature_selection import ExhaustiveFeatureSelector as EFS
+
 
         dataset=dataset._get_numeric_data()
         features=dataset.drop([target_name], axis = 1)
         target = dataset.loc[:,target_name]
 
-        if feat_selc_dirn=='SFS':
-           forward_param=True
-           floating_param=False
-
-        elif feat_selc_dirn=='SBS':
-           forward_param=False
-           floating_param=False
-        
-        elif feat_selc_dirn=='SFFS':
-           forward_param=True
-           floating_param=True
-        
-        elif feat_selc_dirn=='SBFS':
-           forward_param=False
-           floating_param=True
+        if feat_selc_dirn=='EFS':
+        #   fs =EFS(model, 
+        #   min_features=num_min_features,
+        #   max_features=num_max_features,
+        #   scoring=score_param,
+        #   cv=cross_val)
+        # #   print("\nfeature_pred_score :",fs.best_score_*(-1))
+        #   print('Selected features:', fs.best_idx_)
+            pass
 
 
-        sfs = SFS(model, 
-           k_features=num_features, 
-           forward=forward_param, 
-           floating=floating_param, 
-           scoring=score_param,
-           cv=cross_val)
+        else:
+            if feat_selc_dirn=='SFS':
+                forward_param=True
+                floating_param=False
 
-        sfs = sfs.fit(features, target)
+            elif feat_selc_dirn=='SBS':
+                forward_param=False
+                floating_param=False
+                
+            elif feat_selc_dirn=='SFFS':
+                forward_param=True
+                floating_param=True
+                
+            elif feat_selc_dirn=='SBFS':
+                forward_param=False
+                floating_param=True
 
-        print("\nfeature_pred_score :",sfs.k_score_)
-        print("\nfeatures_name :",sfs.k_feature_idx_)
-        print("\nfeatures_name :",sfs.k_feature_names_)
+            sfs = SFS(model, 
+            k_features=num_max_features, 
+            forward=forward_param, 
+            floating=floating_param, 
+            scoring=score_param,
+            cv=cross_val)
 
-        Relevant_Features =dataset.loc[:, sfs.k_feature_names_]
+            fs = sfs.fit(features, target)
 
+            print("\nfeature_pred_score :",fs.k_score_)
+            print("\nfeatures_name :",fs.k_feature_idx_)
+            print("\nfeatures_name :",fs.k_feature_names_)
+
+            Relevant_Features =dataset.loc[:, fs.k_feature_names_]
 
         return Relevant_Features
 
