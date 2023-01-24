@@ -33,8 +33,14 @@ class PreProcessing:
         classifiers : list, optional (default="all")
             When function is provided, trains the chosen classifier(s).
         """
+        print("\n#########################################")
+        print("Preprocessing Data ..")
+        print("#########################################\n")
+
 
         loaded_data=PreProcessing.load_data(dataset)
+        print("\nShape of dataset before Preprocessing : ", loaded_data.shape)
+
         target = loaded_data.loc[:,target_name]
         additional_cols=loaded_data.loc[:, additional_cols_list]
 
@@ -44,6 +50,7 @@ class PreProcessing:
         non_varied_data=PreProcessing.remove_nonvariance_data(non_duplicate_data,0.1)
         non_multicollinear_data=PreProcessing.remove_multicollinearity(non_varied_data,0.9)
         cleaned_dataset = pd.concat([additional_cols, target,non_multicollinear_data], axis=1)
+        print("\nShape of dataset after Preprocessing : ", cleaned_dataset.shape)
         train, validate, test=PreProcessing.train_validate_test_split(cleaned_dataset, train_percent=0.6, validate_percent=0.2,seed=None)
 
         return cleaned_dataset,train, validate, test
@@ -59,14 +66,9 @@ class PreProcessing:
         2. duplicate columns
         3. infinity and null values
         """
-        print("\nShape of dataset before Cleaning", dataset.shape)
-        print("\nDatatypes in this dataset", dataset.dtypes)
         
         df1=dataset.select_dtypes(include=['float64','int64']) # taking only the Columns that contain Numerical Values    
         df2=df1.replace([np.inf, -np.inf], np.nan).dropna(axis=1) # removing infinity and null values
-            
-        print("\nShape of dataset after Cleaning", df2.shape)
-        print("Datatypes in this dataset", df2.dtypes)
         return df2
 
     def remove_nonvariance_data(dataset,threshold_value):
@@ -82,11 +84,7 @@ class PreProcessing:
         varModel.fit(dataset)
         constArr=varModel.get_support()  #get_support() return True and False value for each feature.
         constCol=[col for col in dataset.columns if col not in dataset.columns[constArr]]
-        print("\nConstant feature for Dataset \n \n ",constCol)    
-        print("\nShape of  dataset before and after removing  Features of variance  :: ", threshold_value)
-        print('\nShape before drop-->',dataset.shape)
         dataset.drop(columns=constCol,axis=1,inplace=True)
-        print('\nShape after drop-->',dataset.shape)        
         return dataset
 
     def remove_duplicate_columns(dataset):
@@ -96,19 +94,9 @@ class PreProcessing:
             for col2 in dataset.columns[i+1:]:
                 if dataset[col1].equals(dataset[col2]):
                     dupliCols.append(col1+','+col2)
-                    
-        print('\n \n \n # Total Duplicated columns in  dataset ::',len(dupliCols))
-        print("\n\n # Duplicate in  dataset\n\n",dupliCols)
-            
-        #Get the duplicate column names for  Dataset
-        dCols =[col.split(',')[1] for col in dupliCols]
-        print("\n # Duplicate Columns \n \n ", dCols)
-        
-        #Find the count of unique columns
-        print("\n # Length of Unique Columns for  dataset :: ", len(set(dCols)))        
-        print('\n # Shape before droping duplicate columns for  dataset -->',dataset.shape)
+                                
+        dCols =[col.split(',')[1] for col in dupliCols]        
         dataset = dataset.drop(columns=dCols,axis=1)
-        print('\n # Shape after droping duplicate columns  dataset-->',dataset.shape)        
         return dataset
 
     def remove_multicollinearity(dataset,threshold):
@@ -120,11 +108,7 @@ class PreProcessing:
                     colName=corr_matrix.columns[i] #getting the column name
                     col_corr.add(colName) #adding the correlated column name heigher than threshold value.
                         
-        print("\n \n # Length Correlated columns for  Dataset:", len(col_corr))
-        print('\n # Correlated columns for  Dataset:\n \n ',col_corr)         
-        print('\n # Shape before droping Correlated duplicate columns for  dataset-->',dataset.shape)
         dataset=dataset.drop(columns=col_corr,axis=1)
-        print('\n # Shape after droping Correlated duplicate columns for Original dataset-->',dataset.shape)        
         return dataset
 
     def train_validate_test_split(df, train_percent, validate_percent,seed):
