@@ -182,7 +182,6 @@ class Regressors:
         self.y_val = validate.loc[:,target_name]
         self.X_test=test.drop([target_name], axis = 1)
         self.y_test = test.loc[:,target_name]
-
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
         
@@ -192,6 +191,38 @@ class Regressors:
             model=ensemble.GradientBoostingRegressor(random_state=0)
         if select_model=='hGBR':        
             model=ensemble.HistGradientBoostingRegressor(random_state=6)
+        if select_model=='AdaBoost':        
+            model=ensemble.AdaBoostRegressor(random_state=6)
+        if select_model=='ETree':        
+            model=ensemble.ExtraTreesRegressor(random_state=6)
+                
+        if tuner_parameters==None:
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+        else:                
+            RF_cv = RandomizedSearchCV(estimator=model,param_distributions=tuner_parameters,n_iter=30,cv=5,n_jobs=-1)
+            RF_cv.fit(self.X_train,self.y_train.values.ravel())
+            model=RF_cv.best_estimator_
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+            
+        print(f"\n############ {select_model} MODEL METRICS #############")
+        print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
+        print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
+        print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
+        print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
+        print("#########################################\n")
+        filename=f'{select_model}.pickle'
+        pickle.dump(model, open(filename, "wb"))
+
+    def mixed_ensemble_models(self,select_model,estimator_models_list,tuner_parameters):
+    
+        if select_model=='bagging':        
+            model=ensemble.BaggingRegressor(estimator_models_list,random_state=6)
+        
+        if select_model=='voting':        
+            model=ensemble.VotingRegressor(estimator_models_list)
+        
         
         if tuner_parameters==None:
             model.fit(self.X_train, self.y_train.values)
@@ -213,10 +244,14 @@ class Regressors:
         pickle.dump(model, open(filename, "wb"))
 
     
-    
-    def random_forest(self,tuner_parameters=None):
-        model=ensemble.RandomForestRegressor(random_state=6)
+        pass
 
+
+    def tree_models(self,select_model:str,tuner_parameters=None):
+        
+        if select_model=='DTREE':        
+            model=tree.DecisionTreeRegressor(random_state=6)
+        
         if tuner_parameters==None:
             model.fit(self.X_train, self.y_train.values)
             y_pred = model.predict(self.X_test)
@@ -227,39 +262,16 @@ class Regressors:
             model.fit(self.X_train, self.y_train.values)
             y_pred = model.predict(self.X_test)
             
-        print("\n############ MODEL METRICS #############")
+        print(f"\n############ {select_model} MODEL METRICS #############")
         print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
         print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
         print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
         print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
         print("#########################################\n")
-        filename='random_forest.pickle'
+        filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
 
-    def gradient_boosting(self,tuner_parameters=None):
-        model=ensemble.GradientBoostingRegressor(random_state=0)
-
-        if tuner_parameters==None:
-            model.fit(self.X_train, self.y_train.values)
-            y_pred = model.predict(self.X_test)
-        else:                
-            RF_cv = RandomizedSearchCV(estimator=model,param_distributions=tuner_parameters,n_iter=30,cv=5,n_jobs=-1)
-            RF_cv.fit(self.X_train,self.y_train.values.ravel())
-            model=RF_cv.best_estimator_
-            model.fit(self.X_train, self.y_train.values)
-            y_pred = model.predict(self.X_test)
-            
-        print("\n############ Gradient Boosting Regressor #############")
-        print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
-        print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
-        print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
-        print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
-        print("########################################################\n")
-
-        filename='gradient_boosting.pickle'
-        pickle.dump(model, open(filename, "wb"))
-
-
+    
         
     # def gradient_boosting():
     #     pass
