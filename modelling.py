@@ -215,15 +215,19 @@ class Regressors:
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
 
-    def mixed_ensemble_models(self,select_model,estimator_models_list,tuner_parameters):
+    def mixed_ensemble_models(self,select_model,estimator_models,tuner_parameters):
     
         if select_model=='bagging':        
-            model=ensemble.BaggingRegressor(estimator_models_list,random_state=6)
+            model=ensemble.BaggingRegressor(estimator_models,random_state=6)
         
         if select_model=='voting':        
-            model=ensemble.VotingRegressor(estimator_models_list)
-        
-        
+            model=ensemble.VotingRegressor(estimator_models)
+
+        if select_model=='adaBoost_dtree':
+            print('not implemented yet')
+        if select_model=='stacking':
+            print('not implemented yet')
+                
         if tuner_parameters==None:
             model.fit(self.X_train, self.y_train.values)
             y_pred = model.predict(self.X_test)
@@ -242,9 +246,6 @@ class Regressors:
         print("#########################################\n")
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
-
-    
-        pass
 
 
     def tree_models(self,select_model:str,tuner_parameters=None):
@@ -270,14 +271,6 @@ class Regressors:
         print("#########################################\n")
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
-
-    
-        
-    # def gradient_boosting():
-    #     pass
-
-    def decision_tree():
-        pass
 
     def dnn_sequential_model(self, LOG_DIR,MODEL_DIR):
         """
@@ -329,7 +322,6 @@ class Regressors:
                     validation_data=(self.X_val, self.y_val))
         tuner.results_summary()
 
-        # dnn_models = tuner.get_best_models(num_models=5)
-        # dnn_models[0].save("model.h5")
-        # return dnn_models
-        
+        filename='dnn_model.pickle'
+        pickle.dump(tuner, open(filename, "wb"))
+
