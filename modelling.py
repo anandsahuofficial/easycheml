@@ -2,9 +2,13 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import pathlib
 import smogn
 import pickle
+
+######### SYSTEM #############
+import datetime
+import sys
+import copy
 
 
 ###### DATA VISUALIZATION LIBRARIES
@@ -23,8 +27,20 @@ from scipy import stats,special
 ############### EASYCHEML LIBRARIES ############
 from preprocessing import PreProcessing as pre
 
+############## tensorflow ##################
+import os 
+from tensorflow.keras import models
+from tensorflow.keras import layers
+from tensorflow.keras.callbacks import History
+from tensorflow import keras
+from tensorflow.keras import layers
+from keras_tuner.tuners import RandomSearch
+from tensorflow.keras.callbacks import TensorBoard
 
 
+global timestamp_var
+value = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp())
+timestamp_var=f"{value:%Y-%m-%d-%H-%M-%S}"
 
 
 def build_ml_model():
@@ -185,6 +201,9 @@ class Regressors:
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
         
+        timestamp = copy.copy(timestamp_var)
+        sys.stdout = Logger(f"ensemble_models-logfile-{timestamp}.log")
+        
         if select_model=='RF':        
             model=ensemble.RandomForestRegressor(random_state=6)
         if select_model=='GBR':        
@@ -205,6 +224,10 @@ class Regressors:
             model=RF_cv.best_estimator_
             model.fit(self.X_train, self.y_train.values)
             y_pred = model.predict(self.X_test)
+
+        print("\n############ Input Parameters Given ############")
+        print("\nModel :", model)
+        print("\nTuner Parameters :", tuner_parameters)
             
         print(f"\n############ {select_model} MODEL METRICS #############")
         print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
@@ -272,56 +295,78 @@ class Regressors:
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
 
-    def dnn_sequential_model(self, LOG_DIR,MODEL_DIR):
+    def build_model(self,hp):
+        model = models.Sequential()
+        for i in range(hp.Int('num_layers', 2, 30)):
+            model.add(layers.Dense(units=hp.Int('units_' + str(i),
+                                                min_value=2,
+                                                max_value=20,
+                                                step=4),
+                                                activation='relu'))
+        model.add(layers.Dense(1, activation='linear'))
+        model.compile(
+            optimizer=keras.optimizers.Adam(
+            hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
+            loss='mean_absolute_error',
+            metrics=['mean_absolute_error'])
+        return model
+
+    def dnn_sequential_model(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
         """
 
-        """
-        import os 
-        from tensorflow.keras import models
-        from tensorflow.keras import layers
-        from tensorflow.keras.callbacks import History
-        from tensorflow import keras
-        from tensorflow.keras import layers
-        from keras_tuner.tuners import RandomSearch
-        from tensorflow.keras.callbacks import TensorBoard
+        """       
+                
+        timestamp = copy.copy(timestamp_var)
+        sys.stdout = Logger(f"DNN-logfile-{timestamp}.log")
+        LOG_DIR = f'DNN-LOG-DIR-{timestamp}'
+        tensorboard = TensorBoard(log_dir=LOG_DIR)    
 
-        tensorboard = TensorBoard(log_dir=LOG_DIR)
 
-        def build_model(hp):
-            model = models.Sequential()
-            for i in range(hp.Int('num_layers', 2, 30)):
-                model.add(layers.Dense(units=hp.Int('units_' + str(i),
-                                                    min_value=2,
-                                                    max_value=20,
-                                                    step=4),
-                                                    activation='relu'))
-            model.add(layers.Dense(1, activation='linear'))
-            model.compile(
-                optimizer=keras.optimizers.Adam(
-                hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
-                loss='mean_absolute_error',
-                metrics=['mean_absolute_error'])
-            return model
-
-        tuner = RandomSearch(
-            build_model,
-            objective='val_mean_absolute_error',        
-            max_trials=15,
-            executions_per_trial=3,
-            overwrite=True,
-            directory=pathlib.Path(MODEL_DIR),
-            project_name=LOG_DIR)
         
-        tuner.search_space_summary()
+        tuner = RandomSearch(
+            self.build_model,
+            objective='val_mean_absolute_error',        
+            max_trials=num_max_trials,
+            executions_per_trial=num_executions_per_trial,
+            overwrite=True,
+            directory=f'DNN-TUNER-DIR-{timestamp}',
+            project_name=LOG_DIR)
+
+        print("\n########################")
+        print(" Search for best model")    
+        print("########################\n")
 
         tuner.search(x=self.X_train,
                     y=self.y_train,
-                    epochs=10,
-                    batch_size=16,
+                    epochs=num_epochs,
+                    batch_size=num_batch_size,
                     callbacks=[tensorboard],
                     validation_data=(self.X_val, self.y_val))
+
+        print("\n########################")
+        print("Search Space Summary")    
+        print("########################\n")
+        tuner.search_space_summary()
+
+        print("\n########################")
+        print("Results Summary")    
+        print("########################\n")
+        
         tuner.results_summary()
 
-        filename='dnn_model.pickle'
+        filename=f'DNN-MODEL-{timestamp}.pickle'
         pickle.dump(tuner, open(filename, "wb"))
+        
 
+class Logger(object):
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, "a")
+    def __getattr__(self, attr):
+        return getattr(self.terminal, attr)
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)      
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
