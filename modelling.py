@@ -1,6 +1,31 @@
-import seaborn
-import smogn
+####### DATA MANIPULATION LIBRARIES
 import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+import pathlib
+import smogn
+import pickle
+
+
+###### DATA VISUALIZATION LIBRARIES
+import seaborn as sns
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+# %matplotlib inline
+
+############ ML LIBRARIES ###########
+from sklearn import impute,metrics,model_selection,linear_model,ensemble,svm,kernel_ridge,tree,experimental,neighbors
+from sklearn.preprocessing import LabelEncoder,OneHotEncoder,MinMaxScaler,StandardScaler
+from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
+from xgboost import XGBRegressor
+from scipy import stats,special
+
+############### EASYCHEML LIBRARIES ############
+from preprocessing import PreProcessing as pre
+
+
+
+
 
 def build_ml_model():
     """
@@ -122,116 +147,177 @@ class feature_engineering:
     
         df = smogn.smoter(
 
-            ## main arguments
             data = dataset,             ## pandas dataframe
             y = target,                 ## string ('header name')
             k = k_value,                ## positive integer (k < n)
             samp_method = samp,         ## string ('balance' or 'extreme')
-
-            ## phi relevance arguments
             rel_thres = thres,          ## positive real number (0 < R < 1)
             rel_method = rel,           ## string ('auto' or 'manual')
             rel_xtrm_type = rel_type,   ## string ('low' or 'both' or 'high')
             rel_coef = coef             ## positive real number (0 < R)
 
         )
-        seaborn.kdeplot(dataset[target], label = "Original")
-        seaborn.kdeplot(df[target], label = "SMOGN")        
+        sns.kdeplot(dataset[target], label = "Original")
+        sns.kdeplot(df[target], label = "SMOGN")        
         return df
 
 
-class modelling:
-    
-    def __init__(self, X_train, y_train,X_val,y_val,X_test,y_test):
-        self.X_train = X_train
-        self.y_train = y_train
-        self.X_val = X_val
-        self.y_val = y_val
-        self.X_test = X_test
-        self.y_test = y_test
+class Regressors:
 
-    def random_forest():
-        pass
+    
+    def __init__(self, dataset,target_name,train_size, val_size):
+        self.dataset = dataset
+        self.target = target_name
+        self.val_size = val_size
+        self.train_size = train_size
+        train, validate, test=pre.train_validate_test_split(dataset,train_size,val_size,0)
+                
+        train=train._get_numeric_data()
+        validate=validate._get_numeric_data()
+        test=test._get_numeric_data()
+
+        self.X_train=train.drop([target_name], axis = 1)
+        self.y_train = train.loc[:,target_name]
+        self.X_val=validate.drop([target_name], axis = 1)
+        self.y_val = validate.loc[:,target_name]
+        self.X_test=test.drop([target_name], axis = 1)
+        self.y_test = test.loc[:,target_name]
+
+    
+    def ensemble_models(self,select_model:str,tuner_parameters=None):
         
-    def gradient_boosting():
-        pass
+        if select_model=='RF':        
+            model=ensemble.RandomForestRegressor(random_state=6)
+        if select_model=='GBR':        
+            model=ensemble.GradientBoostingRegressor(random_state=0)
+        if select_model=='hGBR':        
+            model=ensemble.HistGradientBoostingRegressor(random_state=6)
+        
+        if tuner_parameters==None:
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+        else:                
+            RF_cv = RandomizedSearchCV(estimator=model,param_distributions=tuner_parameters,n_iter=30,cv=5,n_jobs=-1)
+            RF_cv.fit(self.X_train,self.y_train.values.ravel())
+            model=RF_cv.best_estimator_
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+            
+        print(f"\n############ {select_model} MODEL METRICS #############")
+        print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
+        print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
+        print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
+        print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
+        print("#########################################\n")
+        filename=f'{select_model}.pickle'
+        pickle.dump(model, open(filename, "wb"))
+
+    
+    
+    def random_forest(self,tuner_parameters=None):
+        model=ensemble.RandomForestRegressor(random_state=6)
+
+        if tuner_parameters==None:
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+        else:                
+            RF_cv = RandomizedSearchCV(estimator=model,param_distributions=tuner_parameters,n_iter=30,cv=5,n_jobs=-1)
+            RF_cv.fit(self.X_train,self.y_train.values.ravel())
+            model=RF_cv.best_estimator_
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+            
+        print("\n############ MODEL METRICS #############")
+        print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
+        print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
+        print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
+        print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
+        print("#########################################\n")
+        filename='random_forest.pickle'
+        pickle.dump(model, open(filename, "wb"))
+
+    def gradient_boosting(self,tuner_parameters=None):
+        model=ensemble.GradientBoostingRegressor(random_state=0)
+
+        if tuner_parameters==None:
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+        else:                
+            RF_cv = RandomizedSearchCV(estimator=model,param_distributions=tuner_parameters,n_iter=30,cv=5,n_jobs=-1)
+            RF_cv.fit(self.X_train,self.y_train.values.ravel())
+            model=RF_cv.best_estimator_
+            model.fit(self.X_train, self.y_train.values)
+            y_pred = model.predict(self.X_test)
+            
+        print("\n############ Gradient Boosting Regressor #############")
+        print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
+        print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
+        print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
+        print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
+        print("########################################################\n")
+
+        filename='gradient_boosting.pickle'
+        pickle.dump(model, open(filename, "wb"))
+
+
+        
+    # def gradient_boosting():
+    #     pass
 
     def decision_tree():
         pass
 
-    def dnn_sequential_model(self, X_train, y_train,X_val,y_val,X_test,y_test, dnn_log_model_dir):
+    def dnn_sequential_model(self, LOG_DIR,MODEL_DIR):
+        """
 
-        import os
-        import tensorflow as tf
-        from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D
+        """
+        import os 
+        from tensorflow.keras import models
+        from tensorflow.keras import layers
         from tensorflow.keras.callbacks import History
         from tensorflow import keras
         from tensorflow.keras import layers
-        from keras_tuner.engine.hyperparameters import HyperParameters
         from keras_tuner.tuners import RandomSearch
         from tensorflow.keras.callbacks import TensorBoard
 
-        LOG_DIR = dnn_log_model_dir
         tensorboard = TensorBoard(log_dir=LOG_DIR)
 
         def build_model(hp):
-            model = keras.Sequential()
+            model = models.Sequential()
             for i in range(hp.Int('num_layers', 2, 30)):
                 model.add(layers.Dense(units=hp.Int('units_' + str(i),
-                                                    min_value=32,
-                                                    max_value=3072,
-                                                    step=32),
+                                                    min_value=2,
+                                                    max_value=20,
+                                                    step=4),
                                                     activation='relu'))
             model.add(layers.Dense(1, activation='linear'))
             model.compile(
                 optimizer=keras.optimizers.Adam(
-                    hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
+                hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
                 loss='mean_absolute_error',
                 metrics=['mean_absolute_error'])
             return model
 
-
         tuner = RandomSearch(
             build_model,
-            objective='val_mean_absolute_error',
-        
+            objective='val_mean_absolute_error',        
             max_trials=15,
             executions_per_trial=3,
             overwrite=True,
-
-            directory=os.path.normpath(r'D:\ANANDSAHU\DNN-Models'),
+            directory=pathlib.Path(MODEL_DIR),
             project_name=LOG_DIR)
-
-
+        
         tuner.search_space_summary()
 
-
-
-
-        tuner.search(x=X_train,
-                    y=y_train,
-                    epochs=100,
-                    batch_size=32,
+        tuner.search(x=self.X_train,
+                    y=self.y_train,
+                    epochs=10,
+                    batch_size=16,
                     callbacks=[tensorboard],
-                    validation_data=(X_test, y_test))
-
+                    validation_data=(self.X_val, self.y_val))
         tuner.results_summary()
 
-
-
-
-
-        pass
-
-
-    
-
-
-
-
-
-
-
-
-
+        # dnn_models = tuner.get_best_models(num_models=5)
+        # dnn_models[0].save("model.h5")
+        # return dnn_models
+        
