@@ -147,16 +147,24 @@ class feature_engineering:
         corr_method = pearson, kendall, spearman
 
         """
+        print("#######################################")
+        print(f"FEATURE SELECTION THROUGH CORRELATION")
+        print("#######################################")
+
         dataset=dataset.reset_index()
         dataset = dataset[dataset.columns.drop((dataset.filter(regex='ndex')))]
         dataset=dataset._get_numeric_data()
         matrix = abs(dataset.corr(method=corr_method,numeric_only = True))[target].sort_values(kind="quicksort", ascending=False)
         matrix = matrix[matrix > lower_threshold]
-        print("\nCorrelated Features :", matrix)
-
+        
         Relevant_Features =dataset.loc[:, abs(dataset.corr(method=corr_method,numeric_only = True)[target]) > lower_threshold]
         Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='ndex')))]
         Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='unnamed')))]
+
+        print("\nTarget : ", target)
+        print("\nCorrelation Method : ", corr_method)
+        print("\nCorrelation with Target\n", matrix)
+
         return Relevant_Features
         
     def generate_synthetic_data(dataset, target, k_value, samp, thres, rel, rel_type,coef):
@@ -225,16 +233,20 @@ class Regressors:
             model.fit(self.X_train, self.y_train.values)
             y_pred = model.predict(self.X_test)
 
-        print("\n############ Input Parameters Given ############")
+        print("\n#########################################")
+        print("         ENSEMBLE MODEL SELECTED")
+        print("#########################################\n")
+
         print("\nModel :", model)
-        print("\nTuner Parameters :", tuner_parameters)
-            
-        print(f"\n############ {select_model} MODEL METRICS #############")
+        print("\nTuner Parameters :", tuner_parameters)            
+        print(f"\nModel Metrics\n")
+        
         print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
         print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
         print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
         print('MAE of Testing data : {0}'.format(round(metrics.mean_absolute_error(self.y_test, y_pred),3)))
         print("#########################################\n")
+        
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
 
