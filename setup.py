@@ -12,7 +12,8 @@ setuptools.setup(
      description="A simple tool for using artificial intelligence in chemistry",
      long_description=long_description,
      long_description_content_type="text/markdown",
-     url="",
+     url="https://github.com/anandsahuofficial/easycheml.git",
+     download_url="https://github.com/anandsahuofficial/easycheml/archive/refs/tags/easycheml.tar.gz",
      #packages=setuptools.find_packages(),
      packages=['easycheml'],
      classifiers=[
@@ -21,6 +22,7 @@ setuptools.setup(
          "Operating System :: OS Independent",
      ],
  )
+
 
 
 
