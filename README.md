@@ -1,1 +1,1 @@
-A simple tool for using artificial intelligence in chemistry"
+A simple tool for using artificial intelligence in chemistry
