@@ -2,7 +2,7 @@
 
 # -- Project information
 
-project = 'easychem'
+project = 'EasyCheml'
 copyright = '2022, AnandSahu'
 author = 'AnandSahu'
 

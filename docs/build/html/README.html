@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReadMe &mdash; EasyCheml 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="LICENSE" href="LICENSE.html" />
+    <link rel="prev" title="Welcome to EasyCheml’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            EasyCheml
+          </a>
+              <div class="version">
+                0.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Notes</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ReadMe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-easycheml">What is EasyCheml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#why-easycheml">Why EasyCheml</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#how-to-use-it">How to use it</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#data-preprocessing">Data Preprocessing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#feature-engineering">Feature Engineering</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-modelling">Data Modelling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-postprocessing-and-visualization">Data Postprocessing and Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="LICENSE.html">LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">EasyCheml</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ReadMe</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="readme">
+<h1>ReadMe<a class="headerlink" href="#readme" title="Permalink to this heading"></a></h1>
+<section id="what-is-easycheml">
+<h2>What is EasyCheml<a class="headerlink" href="#what-is-easycheml" title="Permalink to this heading"></a></h2>
+<p>EasyCheml is a tensorflow-based package for deep/machine learning application in chemistry, which doesn’t require any advanced knowledge of Python (or machine learning).  The intended audience is domain scientists with basic knowledge of python.</p>
+<section id="why-easycheml">
+<h3>Why EasyCheml<a class="headerlink" href="#why-easycheml" title="Permalink to this heading"></a></h3>
+<p>The purpose of the EasyCheml is to provide an environment that bridges the instrument specific libraries and general physical analysis by enabling the seamless deployment of deep/machine learning algorithms.</p>
+</section>
+</section>
+<section id="how-to-use-it">
+<h2>How to use it<a class="headerlink" href="#how-to-use-it" title="Permalink to this heading"></a></h2>
+<section id="data-preprocessing">
+<h3>Data Preprocessing<a class="headerlink" href="#data-preprocessing" title="Permalink to this heading"></a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">easycheml.preprocessing</span> <span class="kn">import</span> <span class="n">PreProcessing</span> <span class="k">as</span> <span class="n">p</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">preprocessed_dataset</span><span class="p">,</span><span class="n">train</span><span class="p">,</span> <span class="n">validate</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">preprocess_data</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span><span class="s1">&#39;target_name&#39;</span><span class="p">,</span><span class="s1">&#39;list_of_specific_columns&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">preprocessed_dataset</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="s2">&quot;df_feature.xlsx&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="feature-engineering">
+<h3>Feature Engineering<a class="headerlink" href="#feature-engineering" title="Permalink to this heading"></a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">easycheml.modelling</span> <span class="kn">import</span> <span class="n">feature_engineering</span> <span class="k">as</span> <span class="n">f</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">feature</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">feature_thru_correlation</span><span class="p">(</span><span class="s1">&#39;df_feature.xlsx&#39;</span><span class="p">,</span> <span class="s1">&#39;target_name&#39;</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="s1">&#39;pearson&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="data-modelling">
+<h3>Data Modelling<a class="headerlink" href="#data-modelling" title="Permalink to this heading"></a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">easycheml.modelling</span> <span class="kn">import</span> <span class="n">Regressors</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">=</span><span class="n">Regressors</span><span class="p">(</span><span class="s1">&#39;df_feature.xlsx&#39;</span><span class="p">,</span><span class="s1">&#39;target_name&#39;</span><span class="p">,</span><span class="mf">0.6</span><span class="p">,</span><span class="mf">0.2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">ensemble_models</span><span class="p">(</span><span class="s2">&quot;RF&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>      <span class="c1"># Random Forest Regressor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">ensemble_models</span><span class="p">(</span><span class="s2">&quot;AdaBoost&quot;</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># AdaBoost Regressor</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Hyperparameter for tuning above Random Forest Regressor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span>
+<span class="go">    &#39;n_estimators&#39; :[50,100,200,300,400,500,600,700,800,900,1000],</span>
+<span class="go">    &#39;criterion&#39; : [&quot;squared_error&quot;, &quot;friedman_mse&quot;, &quot;absolute_error&quot;],</span>
+<span class="go">    &#39;max_depth&#39; : [3,5,7,9,11,13,15,17,19,21,23,25,27,29,31],</span>
+<span class="go">    &#39;min_samples_split&#39; : [5,10,20,30,40,50,60,70,80,90,100],</span>
+<span class="go">    &#39;bootstrap&#39;:[True],</span>
+<span class="go">    &#39;min_samples_leaf&#39;:[5,10,20,30,40,50,60,70,80,90,100],</span>
+<span class="go">                }</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">ensemble_models</span><span class="p">(</span><span class="s2">&quot;RF&quot;</span><span class="p">,</span><span class="n">parameters</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Deep Learning Sequential Model</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">num_max_trials</span><span class="o">=</span><span class="mi">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">num_executions_per_trial</span><span class="o">=</span><span class="mi">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">num_epochs</span><span class="o">=</span><span class="mi">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">num_batch_size</span><span class="o">=</span><span class="mi">32</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">dnn_sequential_model</span><span class="p">(</span><span class="n">num_max_trials</span><span class="p">,</span><span class="n">num_executions_per_trial</span><span class="p">,</span><span class="n">num_epochs</span><span class="p">,</span><span class="n">num_batch_size</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="data-postprocessing-and-visualization">
+<h3>Data Postprocessing and Visualization<a class="headerlink" href="#data-postprocessing-and-visualization" title="Permalink to this heading"></a></h3>
+</section>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<p>First, install <a class="reference external" href="https://www.tensorflow.org/install">Tensorflow</a>. Then, install EasyCheml with</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pip</span> <span class="n">install</span> <span class="n">easycheml</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to EasyCheml’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="LICENSE.html" class="btn btn-neutral float-right" title="LICENSE" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, AnandSahu.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
