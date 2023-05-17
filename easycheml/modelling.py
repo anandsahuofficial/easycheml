@@ -69,7 +69,7 @@ def build_ml_model():
     """
     pass
 
-class feature_engineering:
+class FeatureEngineering:
     
     def feature_thru_wrapper(dataset:str,target_name:str,feat_selc_dirn:str,num_min_features:int,num_max_features:int,model:callable,score_param:str,cross_val:int):
         """
@@ -140,7 +140,6 @@ class feature_engineering:
 
         return Relevant_Features
 
-
     def feature_thru_correlation(dataset, target, lower_threshold, corr_method):
         """
         corr_method = pearson, kendall, spearman
@@ -184,11 +183,17 @@ class feature_engineering:
         sns.kdeplot(df[target], label = "SMOGN")        
         return df
 
-
 class Regressors:
+    """
+    Parameter
 
+    dataset: 
+    target_name: name of the target in the dataset
+    train_size: splitsize of the training dataset
+    val_size: splitsize of the validation dataset
+    """
     
-    def __init__(self, dataset,target_name,train_size, val_size):
+    def __init__(self, dataset,target_name,train_size:float, val_size:float):
         self.dataset = dataset
         self.target = target_name
         self.val_size = val_size
@@ -205,11 +210,23 @@ class Regressors:
         self.y_val = validate.loc[:,target_name]
         self.X_test=test.drop([target_name], axis = 1)
         self.y_test = test.loc[:,target_name]
+
+    def linear_models(self,select_model:str,tuner_parameters=None):
+        timestamp = copy.copy(timestamp_var)
+        sys.stdout = Logger(f"linear_model-logfile-{timestamp}.log")
+
+        if select_model=='LR':        
+            model=linear_model.LinearRegression()
+        if select_model=='Ridge':        
+            model=linear_model.Ridge()
+        
+    
+        pass
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
         
         timestamp = copy.copy(timestamp_var)
-        sys.stdout = Logger(f"ensemble_models-logfile-{timestamp}.log")
+        sys.stdout = Logger(f"ensemble_model-logfile-{timestamp}.log")
         
         if select_model=='RF':        
             model=ensemble.RandomForestRegressor(random_state=6)
@@ -240,6 +257,10 @@ class Regressors:
         print("\nTuner Parameters :", tuner_parameters)            
         print(f"\nModel Metrics\n")
         
+        r2_score_test=round(metrics.r2_score(self.y_test, y_pred),2)*100
+        mse_test=round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)
+        mae_test=round(metrics.mean_absolute_error(self.y_test, y_pred),3)
+
         print('R2 score of training data : {0} %'.format(round(metrics.r2_score(self.y_train, model.predict(self.X_train)),2)*100))
         print('R2 score of Testing data : {0} %'.format(round(metrics.r2_score(self.y_test, y_pred),2)*100))
         print('RMSE of of Testing data : {0}'.format(round(metrics.mean_squared_error(self.y_test, y_pred,squared=False),3)))
@@ -248,6 +269,8 @@ class Regressors:
         
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
+
+        return select_model, r2_score_test,mse_test, mae_test
 
     def mixed_ensemble_models(self,select_model,estimator_models,tuner_parameters):
     
@@ -306,6 +329,30 @@ class Regressors:
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
 
+    def compare_ml_models(self,list_ensemble_models,tuner_parameters):
+
+        if list_ensemble_models==None:
+            list_ensemble_models=['RF','GBR','hGBR','AdaBoost','ETree']
+        
+        metrics = pd.DataFrame()
+
+        for model in list_ensemble_models:
+            modelname,r2_score_test, mse_test, mae_test=self.ensemble_models(model, tuner_parameters)
+            temp ={
+            'Model': model,
+            'R2':r2_score_test,
+            'MSE': mse_test,
+            'MAE': mae_test
+            }
+            
+            metrics=metrics.append(temp,ignore_index=True)
+            metrics = metrics.sort_values(['R2'], ascending=False)
+
+        print(f"\n############ MODELS PERFORMANCE #############")
+        print(metrics)
+        print(f"#############################################\n")
+
+    
     def build_model(self,hp):
         model = models.Sequential()
         for i in range(hp.Int('num_layers', 2, 30)):
@@ -331,8 +378,6 @@ class Regressors:
         sys.stdout = Logger(f"DNN-logfile-{timestamp}.log")
         LOG_DIR = f'DNN-LOG-DIR-{timestamp}'
         tensorboard = TensorBoard(log_dir=LOG_DIR)    
-
-
         
         tuner = RandomSearch(
             self.build_model,
