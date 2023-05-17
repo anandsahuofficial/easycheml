@@ -416,8 +416,12 @@ class Regressors:
 
 class Logger(object):
     def __init__(self, filename):
+        import os
+        path='logfiles'
+        os.mkdir(path) 
+
         self.terminal = sys.stdout
-        self.log = open(filename, "a")
+        self.log = open(f'{path}/{filename}', "a")
     def __getattr__(self, attr):
         return getattr(self.terminal, attr)
     def write(self, message):
