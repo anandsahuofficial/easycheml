@@ -3,7 +3,6 @@ import collections
 import pandas as pd
 import numpy as np
 
-
 class PreProcessing:
     
     def preprocess_data(dataset,target_name,additional_cols_list=None):
@@ -55,7 +54,8 @@ class PreProcessing:
 
         return cleaned_dataset,train, validate, test
 
-    def load_data(dataset):        
+    def load_data(dataset):   
+        # s_copy = dataset.copy()     
         data = pd.read_excel(dataset, index_col=0)  
         return data
 
