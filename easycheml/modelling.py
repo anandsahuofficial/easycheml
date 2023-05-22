@@ -436,7 +436,7 @@ class Regressors:
         
 
 
-class Classifier:
+class Classifiers:
     """
     Parameter
 
@@ -453,9 +453,9 @@ class Classifier:
         self.train_size = train_size
         train, validate, test=pre.train_validate_test_split(dataset,train_size,val_size,0)
 
-        train=train._get_numeric_data()
-        validate=validate._get_numeric_data()
-        test=test._get_numeric_data()
+        # train=train._get_numeric_data()
+        # validate=validate._get_numeric_data()
+        # test=test._get_numeric_data()
 
         self.X_train=train.drop([target_name], axis = 1)
         self.y_train = train.loc[:,target_name]
@@ -463,6 +463,10 @@ class Classifier:
         self.y_val = validate.loc[:,target_name]
         self.X_test=test.drop([target_name], axis = 1)
         self.y_test = test.loc[:,target_name]
+
+        self.num_targets=self.y_train.nunique()
+
+        self.y_train, self.y_val,self.y_test = Classifiers.target_encoder(self.y_train,self.y_val,self.y_test)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
@@ -473,7 +477,20 @@ class Classifier:
         isExist = os.path.exists(self.models)
         if not isExist:
             os.makedirs(self.models)
+    
+    def target_encoder(y_train,y_val, y_test):
+        from tensorflow.keras.utils import to_categorical
+        le = LabelEncoder()
+        le.fit(y_train)
+        
+        y_train_enc = le.transform(y_train)
+        y_val_enc = le.transform(y_val)
+        y_test_enc = le.transform(y_test)
 
+        y_train_enc = to_categorical(y_train_enc)
+        y_val_enc = to_categorical(y_val_enc)
+        y_test_enc = to_categorical(y_test_enc)
+        return y_train_enc,y_val_enc, y_test_enc
 
     def linear_models(self,select_model:str,tuner_parameters=None):
         timestamp = copy.copy(timestamp_var)
@@ -616,23 +633,23 @@ class Classifier:
         print(metrics)
         print(f"#############################################\n")
 
-    
     def build_model(self,hp):
-        model = models.Sequential()
+        model = keras.Sequential()
         for i in range(hp.Int('num_layers', 2, 30)):
             model.add(layers.Dense(units=hp.Int('units_' + str(i),
-                                                min_value=2,
-                                                max_value=20,
-                                                step=4),
-                                                activation='relu'))
-        model.add(layers.Dense(1, activation='linear'))
+                                                min_value=32,
+                                                max_value=3072,
+                                                step=32),
+                                activation='relu'))
+        model.add(layers.Dense(3, activation='softmax'))
+        model.add(layers.Dense(self.num_targets, activation='softmax'))
         model.compile(
             optimizer=keras.optimizers.Adam(
-            hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
-            loss='mean_absolute_error',
-            metrics=['mean_absolute_error'])
+                hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4])),
+            loss='categorical_crossentropy',
+        metrics=['accuracy'])
         return model
-
+    
     def dnn_sequential_model(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
         """
 
@@ -645,7 +662,7 @@ class Classifier:
         
         tuner = RandomSearch(
             self.build_model,
-            objective='val_mean_absolute_error',        
+            objective='val_accuracy',        
             max_trials=num_max_trials,
             executions_per_trial=num_executions_per_trial,
             overwrite=True,
@@ -681,11 +698,9 @@ class Classifier:
 
         with open(filename, 'wb') as pickle_file:
             pickle.dump(dictionary, pickle_file)
-        # pickle.dump(dictionary, "wb")
 
 
-        # pickle.dump(tuner, open(dictionary, "wb"))
-        
+            
 class Logger(object):
     def __init__(self, filename):
         self.terminal = sys.stdout
