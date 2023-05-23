@@ -690,7 +690,8 @@ class Classifiers:
         print("########################\n")
         
         self.tuner.results_summary()
-        import dill as pickle
+        # import dill as pickle
+        import pickle
         # from functools import partial
         # import collections
 
@@ -707,19 +708,28 @@ class Classifiers:
             # pickle.dump(tuner, f, protocol=pickle.HIGHEST_PROTOCOL)
     
     def dnn_best_model(self,best_model_num, epoch,batchsize):
-        import pickle
+        # import dill as pickle
         # tuner = pickle.load(open(self.dnn_filename,"rb"))
+
+        with open(self.dnn_filename, 'rb') as file:
+            tuner=pickle.load(file)
+
+        tuner.results_summary()
+
+        models = tuner.get_best_models(num_models=2)
+        model = models[0]
+
+
         # tuner = pickle.load(open("tuner.pkl","rb"))
         # model = self.tuner.get_best_models(num_models=1)
-        model = self.tuner.get_best_models()[best_model_num]
-        model.build(self.X_train.shape)
-        model.summary()
+        # model = tuner.get_best_models()[best_model_num]
+        # model.build(self.X_train.shape)
+        # model.summary()
 
         history = History()
 
         #Configure the model
         model.compile(optimizer='adam',loss="categorical_crossentropy",metrics=["accuracy"])
-
         history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
         result = model.evaluate(self.X_test,self.y_test)
 
@@ -737,7 +747,6 @@ class Classifiers:
         plt.xlabel('epoch')
         plt.legend(['train', 'test'], loc='upper left')
         plt.show()
-
 
         # summarize history for loss
         plt.plot(history.history['val_loss'])
@@ -764,7 +773,3 @@ class Logger(object):
     def flush(self):
         self.terminal.flush()
         self.log.flush()
-
-
-
-
