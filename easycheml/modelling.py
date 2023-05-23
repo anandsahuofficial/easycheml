@@ -466,7 +466,7 @@ class Classifiers:
 
         self.num_targets=self.y_train.nunique()
 
-        self.y_train, self.y_val,self.y_test = Classifiers.target_encoder(self.y_train,self.y_val,self.y_test)
+        self.y_train, self.y_val,self.y_test = self.target_encoder(self.y_train,self.y_val,self.y_test)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
@@ -478,7 +478,7 @@ class Classifiers:
         if not isExist:
             os.makedirs(self.models)
     
-    def target_encoder(y_train,y_val, y_test):
+    def target_encoder(self,y_train,y_val, y_test):
         from tensorflow.keras.utils import to_categorical
         le = LabelEncoder()
         le.fit(y_train)
@@ -650,7 +650,7 @@ class Classifiers:
         metrics=['accuracy'])
         return model
     
-    def dnn_sequential_model(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
+    def dnn_sequential_model_opt(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
         """
 
         """       
@@ -660,7 +660,7 @@ class Classifiers:
         LOG_DIR = f'{self.log_dir_path}/DNN-LOG-DIR-{timestamp}'
         tensorboard = TensorBoard(log_dir=LOG_DIR)    
         
-        tuner = RandomSearch(
+        self.tuner = RandomSearch(
             self.build_model,
             objective='val_accuracy',        
             max_trials=num_max_trials,
@@ -673,7 +673,7 @@ class Classifiers:
         print(" Search for best model")    
         print("########################\n")
 
-        tuner.search(x=self.X_train,
+        self.tuner.search(x=self.X_train,
                     y=self.y_train,
                     epochs=num_epochs,
                     batch_size=num_batch_size,
@@ -683,24 +683,75 @@ class Classifiers:
         print("\n########################")
         print("Search Space Summary")    
         print("########################\n")
-        tuner.search_space_summary()
+        self.tuner.search_space_summary()
 
         print("\n########################")
         print("Results Summary")    
         print("########################\n")
         
-        tuner.results_summary()
-        from functools import partial
-        import collections
+        self.tuner.results_summary()
+        import dill as pickle
+        # from functools import partial
+        # import collections
 
-        filename=f'{self.models}/DNN-MODEL-{timestamp}.pickle'
-        dictionary = collections.defaultdict(partial(collections.defaultdict, int))
+        self.dnn_filename=f'{self.models}/DNN-MODEL-{timestamp}.pickle'
+        # dictionary = collections.defaultdict(partial(collections.defaultdict, int))
 
-        with open(filename, 'wb') as pickle_file:
-            pickle.dump(dictionary, pickle_file)
+        # with open(self.dnn_filename, 'wb') as pickle_file:
+            # pickle.dump(dictionary, pickle_file)
+        
+        with open(self.dnn_filename, "wb") as f:
+            pickle.dump(self.tuner, f)
+        
+        # with open(f"tuner.pkl", "wb") as f:
+            # pickle.dump(tuner, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    def dnn_best_model(self,best_model_num, epoch,batchsize):
+        import pickle
+        # tuner = pickle.load(open(self.dnn_filename,"rb"))
+        # tuner = pickle.load(open("tuner.pkl","rb"))
+        # model = self.tuner.get_best_models(num_models=1)
+        model = self.tuner.get_best_models()[best_model_num]
+        model.build(self.X_train.shape)
+        model.summary()
+
+        history = History()
+
+        #Configure the model
+        model.compile(optimizer='adam',loss="categorical_crossentropy",metrics=["accuracy"])
+
+        history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
+        result = model.evaluate(self.X_test,self.y_test)
+
+        for i in range(len(model.metrics_names)):
+            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
+
+        # list all data in history
+        print(history.history.keys())
+
+        # summarize history for accuracy
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
 
 
-            
+        # summarize history for loss
+        plt.plot(history.history['val_loss'])
+        plt.plot(history.history['loss'], color='b')
+
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend([ 'validation loss', 'train'], loc='upper left')
+        plt.show()
+
+        model.save(f'{self.models}/DNN-bestmodel')
+        # return model
+                
 class Logger(object):
     def __init__(self, filename):
         self.terminal = sys.stdout
@@ -714,25 +765,6 @@ class Logger(object):
         self.terminal.flush()
         self.log.flush()
 
-
-
-
-
-
-
-
-class Logger(object):
-    def __init__(self, filename):
-        self.terminal = sys.stdout
-        self.log = open(filename, "a")
-    def __getattr__(self, attr):
-        return getattr(self.terminal, attr)
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)      
-    def flush(self):
-        self.terminal.flush()
-        self.log.flush()
 
 
 
