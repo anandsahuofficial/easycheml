@@ -655,9 +655,9 @@ class Classifiers:
 
         """       
                 
-        timestamp = copy.copy(timestamp_var)
-        sys.stdout = Logger(f"{self.log_dir_path}/DNN-{timestamp}.log")
-        LOG_DIR = f'{self.log_dir_path}/DNN-LOG-DIR-{timestamp}'
+        self.timestamp = copy.copy(timestamp_var)
+        sys.stdout = Logger(f"{self.log_dir_path}/DNN-{self.timestamp}.log")
+        LOG_DIR = f'{self.log_dir_path}/DNN-LOG-DIR-{self.timestamp}'
         tensorboard = TensorBoard(log_dir=LOG_DIR)    
         
         self.tuner = RandomSearch(
@@ -666,7 +666,7 @@ class Classifiers:
             max_trials=num_max_trials,
             executions_per_trial=num_executions_per_trial,
             overwrite=True,
-            directory=f'{self.log_dir_path}/DNN-TUNER-DIR-{timestamp}',
+            directory=f'{self.log_dir_path}/DNN-TUNER-DIR-{self.timestamp}',
             project_name=LOG_DIR)
 
         print("\n########################")
@@ -693,7 +693,7 @@ class Classifiers:
         # import dill as pickle
         import pickle
 
-        self.dnn_filename=f'{self.models}/DNN-MODEL-{timestamp}.pickle'
+        self.dnn_filename=f'{self.models}/DNN-MODEL-{self.timestamp}.pickle'
         
         with open(self.dnn_filename, "wb") as f:
             pickle.dump(self.tuner, f)
@@ -745,7 +745,20 @@ class Classifiers:
 
         plt.show()
 
-        model.save(f'{self.models}/DNN-bestmodel')
+        model.save(f'{self.models}/DNN-bestmodel-{self.timestamp}')
+        score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+        
+        y_prediction = model.predict(self.X_test)
+        y_prediction = np.argmax (y_prediction, axis = 1)
+        y_test=np.argmax(self.y_test, axis=1)
+
+        print('\n')
+        print('Metrics: ',model.metrics_names, score)
+
+        print("Confusion Matrix \n \n",metrics.confusion_matrix(y_test, y_prediction))
+        print('\n')
+        print("Classification Report \n \n", metrics.classification_report(y_test, y_prediction))
+
         # return model
                 
 class Logger(object):
