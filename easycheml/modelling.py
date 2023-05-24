@@ -692,21 +692,12 @@ class Classifiers:
         self.tuner.results_summary()
         # import dill as pickle
         import pickle
-        # from functools import partial
-        # import collections
 
         self.dnn_filename=f'{self.models}/DNN-MODEL-{timestamp}.pickle'
-        # dictionary = collections.defaultdict(partial(collections.defaultdict, int))
-
-        # with open(self.dnn_filename, 'wb') as pickle_file:
-            # pickle.dump(dictionary, pickle_file)
         
         with open(self.dnn_filename, "wb") as f:
             pickle.dump(self.tuner, f)
         
-        # with open(f"tuner.pkl", "wb") as f:
-            # pickle.dump(tuner, f, protocol=pickle.HIGHEST_PROTOCOL)
-    
     def dnn_best_model(self,best_model_num, epoch,batchsize):
         # import dill as pickle
         # tuner = pickle.load(open(self.dnn_filename,"rb"))
@@ -718,13 +709,8 @@ class Classifiers:
 
         models = tuner.get_best_models(num_models=2)
         model = models[0]
-
-
-        # tuner = pickle.load(open("tuner.pkl","rb"))
-        # model = self.tuner.get_best_models(num_models=1)
-        # model = tuner.get_best_models()[best_model_num]
-        # model.build(self.X_train.shape)
-        # model.summary()
+        model.build(self.X_train.shape)
+        model.summary()
 
         history = History()
 
@@ -739,23 +725,24 @@ class Classifiers:
         # list all data in history
         print(history.history.keys())
 
-        # summarize history for accuracy
-        plt.plot(history.history['accuracy'])
-        plt.plot(history.history['val_accuracy'])
-        plt.title('model accuracy')
-        plt.ylabel('accuracy')
-        plt.xlabel('epoch')
-        plt.legend(['train', 'test'], loc='upper left')
-        plt.show()
+        figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
+        axes[0].plot(history.history['accuracy'])
+        axes[0].plot(history.history['val_accuracy'],color='b')
+        axes[0].set_title('model accuracy')
+        axes[0].set_ylabel('accuracy')
+        axes[0].set_ylim([0, 1])
+        axes[0].set_xlabel('epoch')
+        axes[0].legend(['train', 'test'], loc='upper left')
 
         # summarize history for loss
-        plt.plot(history.history['val_loss'])
-        plt.plot(history.history['loss'], color='b')
+        axes[1].plot(history.history['val_loss'])
+        axes[1].plot(history.history['loss'],color='b')
+        axes[1].set_title('model loss')
+        axes[1].set_ylabel('loss')
+        axes[1].set_ylim([0, 1])
+        axes[1].set_xlabel('epoch')
+        axes[1].legend([ 'validation loss', 'train'], loc='upper left')
 
-        plt.title('model loss')
-        plt.ylabel('loss')
-        plt.xlabel('epoch')
-        plt.legend([ 'validation loss', 'train'], loc='upper left')
         plt.show()
 
         model.save(f'{self.models}/DNN-bestmodel')
