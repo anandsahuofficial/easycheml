@@ -473,10 +473,12 @@ class Classifiers:
         if not isExist:
             os.makedirs(self.log_dir_path)
         
-        self.models = "models"
-        isExist = os.path.exists(self.models)
+        self.model_dir_path = "models"
+        isExist = os.path.exists(self.model_dir_path)
         if not isExist:
-            os.makedirs(self.models)
+            os.makedirs(self.model_dir_path)
+        
+        # self.model=
     
     def target_encoder(self,y_train,y_val, y_test):
         from tensorflow.keras.utils import to_categorical
@@ -693,7 +695,7 @@ class Classifiers:
         # import dill as pickle
         import pickle
 
-        self.dnn_filename=f'{self.models}/DNN-MODEL-{self.timestamp}.pickle'
+        self.dnn_filename=f'{self.model_dir_path}/DNN-MODEL-{self.timestamp}.pickle'
         
         with open(self.dnn_filename, "wb") as f:
             pickle.dump(self.tuner, f)
@@ -745,7 +747,7 @@ class Classifiers:
 
         plt.show()
 
-        model.save(f'{self.models}/DNN-bestmodel-{self.timestamp}')
+        model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
         score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
         
         y_prediction = model.predict(self.X_test)
@@ -759,7 +761,32 @@ class Classifiers:
         print('\n')
         print("Classification Report \n \n", metrics.classification_report(y_test, y_prediction))
 
-        # return model
+        self.model=model
+    
+    def ext_testing(self,ext_testing_dataset):
+
+        self.ext_X_test=ext_testing_dataset.drop([self.target], axis = 1)
+        self.ext_y_test = ext_testing_dataset.loc[:,self.target]
+
+        from tensorflow.keras.utils import to_categorical
+        le = LabelEncoder()
+        le.fit(self.ext_y_test)
+        
+        ext_y_test_enc = le.transform(self.ext_y_test)
+        self.ext_y_test = to_categorical(ext_y_test_enc)
+
+        score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
+        
+        y_prediction = self.model.predict(self.ext_X_test)
+        y_prediction = np.argmax (y_prediction, axis = 1)
+        y_test=np.argmax(self.ext_y_test, axis=1)
+
+        print('\n')
+        print('Metrics: ',self.model.metrics_names, score)
+
+        print("Confusion Matrix \n \n",metrics.confusion_matrix(np.array(y_test), np.array(y_prediction)))
+        print('\n')
+        print("Classification Report \n \n", metrics.classification_report(np.array(y_test), np.array(y_prediction)))
                 
 class Logger(object):
     def __init__(self, filename):
