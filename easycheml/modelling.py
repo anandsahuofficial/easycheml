@@ -4,6 +4,7 @@ import numpy as np
 import statsmodels.api as sm
 import smogn
 import pickle
+# import dill as pickle
 
 ######### SYSTEM #############
 import datetime
@@ -28,7 +29,6 @@ from scipy import stats,special
 from easycheml.preprocessing import PreProcessing as pre
 
 ############## tensorflow ##################
-import os 
 from tensorflow.keras import models
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import History
@@ -36,6 +36,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from keras_tuner.tuners import RandomSearch
 from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.utils import to_categorical
 
 
 global timestamp_var
@@ -71,7 +72,39 @@ def build_ml_model():
     pass
 
 class FeatureEngineering:
-    
+
+    def __init__(self,pandas_dataframe,target_name):
+        self.dataset = pandas_dataframe
+        self.targetname = target_name
+        
+    def feature_thru_correlation(self, lower_threshold, corr_method):
+        """
+        corr_method = pearson, kendall, spearman
+
+        """
+        print("#######################################")
+        print(f"FEATURE SELECTION THROUGH CORRELATION")
+        print("#######################################")
+        
+        # self.data=self.dataset
+        print("\nShape of dataset: ", self.dataset.shape)
+        self.dataset=self.dataset.reset_index()
+        self.dataset = self.dataset[self.dataset.columns.drop((self.dataset.filter(regex='ndex')))]
+        
+        self.dataset=self.dataset._get_numeric_data()
+        matrix = abs(self.dataset.corr(method=corr_method,numeric_only = True))[self.targetname].sort_values(kind="quicksort", ascending=False)
+        matrix = matrix[matrix > lower_threshold]
+        
+        Relevant_Features =self.dataset.loc[:, abs(self.dataset.corr(method=corr_method,numeric_only = True)[self.targetname]) > lower_threshold]
+        Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='ndex')))]
+        Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='unnamed')))]
+
+        print("\nTarget : ", self.targetname)
+        print("\nCorrelation Method : ", corr_method)
+        print("\nCorrelation with Target\n", matrix)
+
+        return Relevant_Features
+        
     def feature_thru_wrapper(dataset:str,target_name:str,feat_selc_dirn:str,num_min_features:int,num_max_features:int,model:callable,score_param:str,cross_val:int):
         """
         Function to select features through feature selection method
@@ -141,30 +174,6 @@ class FeatureEngineering:
 
         return Relevant_Features
 
-    def feature_thru_correlation(dataset, target, lower_threshold, corr_method):
-        """
-        corr_method = pearson, kendall, spearman
-
-        """
-        print("#######################################")
-        print(f"FEATURE SELECTION THROUGH CORRELATION")
-        print("#######################################")
-
-        dataset=dataset.reset_index()
-        dataset = dataset[dataset.columns.drop((dataset.filter(regex='ndex')))]
-        dataset=dataset._get_numeric_data()
-        matrix = abs(dataset.corr(method=corr_method,numeric_only = True))[target].sort_values(kind="quicksort", ascending=False)
-        matrix = matrix[matrix > lower_threshold]
-        
-        Relevant_Features =dataset.loc[:, abs(dataset.corr(method=corr_method,numeric_only = True)[target]) > lower_threshold]
-        Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='ndex')))]
-        Relevant_Features = Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='unnamed')))]
-
-        print("\nTarget : ", target)
-        print("\nCorrelation Method : ", corr_method)
-        print("\nCorrelation with Target\n", matrix)
-
-        return Relevant_Features
         
     def generate_synthetic_data(dataset, target, k_value, samp, thres, rel, rel_type,coef):
     
@@ -221,7 +230,6 @@ class Regressors:
         isExist = os.path.exists(self.models)
         if not isExist:
             os.makedirs(self.models)
-
 
     def linear_models(self,select_model:str,tuner_parameters=None):
         timestamp = copy.copy(timestamp_var)
@@ -446,27 +454,36 @@ class Classifiers:
     val_size: splitsize of the validation dataset
     """
     
-    def __init__(self, dataset,target_name,train_size:float, val_size:float):
+    def __init__(self, dataset,target_name,train_size:float, val_size:float,additional_cols_list=None):
         self.dataset = dataset
         self.target = target_name
         self.val_size = val_size
         self.train_size = train_size
+        self.additional_cols_list=additional_cols_list
         train, validate, test=pre.train_validate_test_split(dataset,train_size,val_size,0)
 
         # train=train._get_numeric_data()
         # validate=validate._get_numeric_data()
         # test=test._get_numeric_data()
 
-        self.X_train=train.drop([target_name], axis = 1)
-        self.y_train = train.loc[:,target_name]
-        self.X_val=validate.drop([target_name], axis = 1)
-        self.y_val = validate.loc[:,target_name]
-        self.X_test=test.drop([target_name], axis = 1)
-        self.y_test = test.loc[:,target_name]
+        X_train=train.drop([target_name], axis = 1)
+        y_train = train.loc[:,target_name]
+        X_val=validate.drop([target_name], axis = 1)
+        y_val = validate.loc[:,target_name]
+        X_test=test.drop([target_name], axis = 1)
+        y_test = test.loc[:,target_name]
+        
+        self.X_train_add_cols=X_train.loc[:,additional_cols_list]
+        self.X_test_add_cols=X_test.loc[:,additional_cols_list]
+        self.X_val_add_cols=X_val.loc[:,additional_cols_list]
 
-        self.num_targets=self.y_train.nunique()
+        self.X_val=X_val.drop(additional_cols_list, axis = 1)
+        self.X_train=X_train.drop(additional_cols_list, axis = 1)
+        self.X_test=X_test.drop(additional_cols_list, axis = 1)
 
-        self.y_train, self.y_val,self.y_test = self.target_encoder(self.y_train,self.y_val,self.y_test)
+        self.num_targets=y_train.nunique()
+
+        self.y_train, self.y_val,self.y_test = self.target_encoder(y_train,y_val,y_test)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
@@ -482,12 +499,12 @@ class Classifiers:
     
     def target_encoder(self,y_train,y_val, y_test):
         from tensorflow.keras.utils import to_categorical
-        le = LabelEncoder()
-        le.fit(y_train)
+        self.endocder = LabelEncoder()
+        self.endocder.fit(y_train)
         
-        y_train_enc = le.transform(y_train)
-        y_val_enc = le.transform(y_val)
-        y_test_enc = le.transform(y_test)
+        y_train_enc = self.endocder.transform(y_train)
+        y_val_enc = self.endocder.transform(y_val)
+        y_test_enc = self.endocder.transform(y_test)
 
         y_train_enc = to_categorical(y_train_enc)
         y_val_enc = to_categorical(y_val_enc)
@@ -502,8 +519,7 @@ class Classifiers:
             model=linear_model.LinearRegression()
         if select_model=='Ridge':        
             model=linear_model.Ridge()
-        
-    
+            
         pass
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
@@ -586,7 +602,6 @@ class Classifiers:
         print("#########################################\n")
         filename=f'{select_model}.pickle'
         pickle.dump(model, open(filename, "wb"))
-
 
     def tree_models(self,select_model:str,tuner_parameters=None):
         
@@ -675,6 +690,9 @@ class Classifiers:
         print(" Search for best model")    
         print("########################\n")
 
+        print("self.X_train:",self.X_train)
+        print("self.X_train_add_cols:",self.X_train_add_cols)
+
         self.tuner.search(x=self.X_train,
                     y=self.y_train,
                     epochs=num_epochs,
@@ -692,8 +710,6 @@ class Classifiers:
         print("########################\n")
         
         self.tuner.results_summary()
-        # import dill as pickle
-        import pickle
 
         self.dnn_filename=f'{self.model_dir_path}/DNN-MODEL-{self.timestamp}.pickle'
         
@@ -744,31 +760,48 @@ class Classifiers:
         axes[1].set_ylim([0, 1])
         axes[1].set_xlabel('epoch')
         axes[1].legend([ 'validation loss', 'train'], loc='upper left')
-
         plt.show()
 
         model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
         score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
         
         y_prediction = model.predict(self.X_test)
-        y_prediction = np.argmax (y_prediction, axis = 1)
-        y_test=np.argmax(self.y_test, axis=1)
-
-        print('\n')
-        print('Metrics: ',model.metrics_names, score)
-
-        print("Confusion Matrix \n \n",metrics.confusion_matrix(y_test, y_prediction))
-        print('\n')
-        print("Classification Report \n \n", metrics.classification_report(y_test, y_prediction))
+        
+        self.predicted = np.argmax (y_prediction, axis = 1)
+        self.actual=np.argmax(self.y_test, axis=1)
 
         self.model=model
     
+    def model_metrics(self):
+        
+        print('\n')
+        print("Accuracy Score: ", metrics.accuracy_score(self.actual, self.predicted))
+        print('\n')
+        print("Confusion Matrix \n \n",metrics.confusion_matrix(self.actual, self.predicted))
+        print('\n')
+        print("Classification Report \n \n", metrics.classification_report(self.actual, self.predicted))
+
+        self.actual=self.endocder.inverse_transform(self.actual)
+        self.predicted=self.endocder.inverse_transform(self.predicted)
+
+        pred_table = pd.DataFrame()
+        pred_table['actual'] = self.actual
+        pred_table['predicted'] = self.predicted
+        
+        self.X_test_add_cols=self.X_test_add_cols.reset_index()
+        self.X_test_add_cols = self.X_test_add_cols[self.X_test_add_cols.columns.drop((self.X_test_add_cols.filter(regex='ndex')))]
+        
+        prediction_dataset = pd.concat([self.X_test_add_cols,pred_table], axis=1)
+        return prediction_dataset
+
     def ext_testing(self,ext_testing_dataset):
 
         self.ext_X_test=ext_testing_dataset.drop([self.target], axis = 1)
         self.ext_y_test = ext_testing_dataset.loc[:,self.target]
 
-        from tensorflow.keras.utils import to_categorical
+        self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
+        self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
+        
         le = LabelEncoder()
         le.fit(self.ext_y_test)
         
@@ -787,7 +820,20 @@ class Classifiers:
         print("Confusion Matrix \n \n",metrics.confusion_matrix(np.array(y_test), np.array(y_prediction)))
         print('\n')
         print("Classification Report \n \n", metrics.classification_report(np.array(y_test), np.array(y_prediction)))
-                
+
+        self.actual=le.inverse_transform(y_test)
+        self.predicted=le.inverse_transform(y_prediction)
+
+        pred_table = pd.DataFrame()
+        pred_table['actual'] = self.actual
+        pred_table['predicted'] = self.predicted
+        
+        self.ext_X_test_add_cols=self.ext_X_test_add_cols.reset_index()
+        self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
+        
+        prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
+        return prediction_dataset
+
 class Logger(object):
     def __init__(self, filename):
         self.terminal = sys.stdout
