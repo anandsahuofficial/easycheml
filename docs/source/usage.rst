@@ -6,14 +6,14 @@ Machine/Deep Learning in 3 Steps
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Data Preprocessing
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 
 >>> from easycheml.preprocessing import PreProcessing as p
 >>> preprocessed_dataset,train, validate, test=p.preprocess_data(dataset,'target_name','list_of_specific_columns')
 >>> preprocessed_dataset.to_excel("df_feature.xlsx")
 
 Feature Engineering
-^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~
 
 >>> from easycheml.modelling import feature_engineering as f
 >>> feature=f.feature_thru_correlation('df_feature.xlsx', 'target_name', 0.4, 'pearson')
@@ -21,7 +21,7 @@ Feature Engineering
 
 
 Data Modelling
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 >>> from easycheml.modelling import Regressors 
 >>> model=Regressors('df_feature.xlsx','target_name',0.6,0.2)

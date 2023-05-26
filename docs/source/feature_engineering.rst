@@ -34,3 +34,24 @@ Synthetic data generation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Synthetic data generation in feature engineering refers to the process of creating artificial or synthetic data samples that mimic the characteristics and distribution of real-world data. Synthetic data generation can be a useful technique when the available real data is limited or lacks diversity, and it can help in overcoming issues such as data scarcity or privacy concerns.
+
+
+Usage
+^^^^^^
+
+.. py:class:: easycheml.modelling.FeatureEngineering(*,pandas_dataframe,target_name)
+    
+    .. py:method:: feature_thru_correlation(lower_threshold, corr_method)
+        
+    :param pandas_dataframe: dataset in form of pandas dataframe
+    :param target_name: name of the target variable in the given dataset
+    :param lower_threshold: minimum correlation value
+    :param corr_method: pearson, kendall, spearman
+
+    
+>>> from easycheml.modelling import FeatureEngineering 
+>>> df=FeatureEngineering(pandas_dataframe='data',target_name='target_var')
+>>> Relevant_Features=df.feature_thru_correlation(lower_threshold=0.4,corr_method='pearson')
+>>> print(Relevant_Features)
+
+

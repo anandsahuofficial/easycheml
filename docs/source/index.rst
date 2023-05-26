@@ -13,6 +13,7 @@ Contents
 .. toctree::
    predictive_learning
    predictive_learning_thru_easycheml
+   LICENSE
    .. installation
    .. features
    .. usage

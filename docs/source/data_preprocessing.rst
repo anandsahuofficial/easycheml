@@ -19,17 +19,20 @@ Usage
 
 .. py:class:: easycheml.preprocessing(*,dataset,target_name,VarianceThreshold_value,multicollinear_threshold additional_cols_list=None)
 
-    :dataset: path of the dataset 
-    :target_name: name of the target variable in the given dataset
-    :VarianceThreshold_value: feature selector that removes all the low variance features from the dataset that are of no great use in modeling.
+    .. py:method:: preprocess_data()
+
+    :param dataset: path of the dataset 
+    :param target_name: name of the target variable in the given dataset
+    :param VarianceThreshold_value: feature selector that removes all the low variance features from the dataset that are of no great use in modeling.
         
         * If Variance Threshold = 0 (Remove Constant Features )
         * If Variance Threshold > 0 (Remove Quasi-Constant Features )
     
-    :multicollinear_threshold: Multicollinearity is a situation where two or more predictors are highly linearly related
+    :param multicollinear_threshold: Multicollinearity is a situation where two or more predictors are highly linearly related
+        
         * 0 < Multicollinear Threshold < 1 
 
-    :additional_cols_list: list of columns excluded in preprocessing
+    :param additional_cols_list: list of columns excluded in preprocessing
 
     
 >>> from easycheml.preprocessing import PreProcessing 
