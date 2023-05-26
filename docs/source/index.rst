@@ -1,28 +1,19 @@
 Welcome to EasyCheml's documentation!
-===================================
+=====================================
 
-**EasyCheml** is a Python library for using artificial intelligence in chemistry"
+**EasyCheml** is a python package for deep/machine learning application in chemistry, which doesn't require any advanced knowledge of Python (or machine learning). The intended audience is domain scientists with basic knowledge of python.
 
+.. **Why use EasyCheml?**
+
+.. The purpose of the EasyCheml is to provide an environment that bridges the instrument specific libraries and general physical analysis by enabling the seamless deployment of deep/machine learning algorithms.
+
+
+Contents
+--------
 .. toctree::
-   :maxdepth: 3
-   :caption: Notes
-
-   README
-   LICENSE
-   papers
-
-.. .. toctree::
-..    :maxdepth: 2
-..    :caption: Package Content
-
-..    data_preprocessing
-..    feature_engineering
-..    data_modelling
-..    data_postprocessing_visualisation
+   predictive_learning
+   predictive_learning_thru_easycheml
+   .. installation
+   .. features
+   .. usage
    
-.. .. toctree::
-..    :maxdepth: 3
-..    :caption: Examples
-
-..    examples
-
