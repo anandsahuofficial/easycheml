@@ -792,6 +792,8 @@ class Classifiers:
         self.X_test_add_cols = self.X_test_add_cols[self.X_test_add_cols.columns.drop((self.X_test_add_cols.filter(regex='ndex')))]
         
         prediction_dataset = pd.concat([self.X_test_add_cols,pred_table], axis=1)
+        prediction_dataset.to_csv('IntTesting-prediction-dataset.csv')
+
         return prediction_dataset
 
     def ext_testing(self,ext_testing_dataset):
@@ -832,6 +834,7 @@ class Classifiers:
         self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
         
         prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
+        prediction_dataset.to_csv('ExtTesting-prediction-dataset.csv')
         return prediction_dataset
 
 class Logger(object):
