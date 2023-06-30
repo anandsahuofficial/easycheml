@@ -1,3 +1,5 @@
 docs/build/
+easycheml.egg-info/
 *.pyc
+.cpython-38.pyc
 *.swp
