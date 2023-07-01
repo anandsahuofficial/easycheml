@@ -34,6 +34,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.callbacks import History
 from tensorflow import keras
 from tensorflow.keras import layers
+import keras_tuner
 from keras_tuner.tuners import RandomSearch
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.utils import to_categorical
@@ -203,33 +204,42 @@ class Regressors:
     val_size: splitsize of the validation dataset
     """
     
-    def __init__(self, dataset,target_name,train_size:float, val_size:float):
+    def __init__(self, dataset,target_name,train_size:float, val_size:float,additional_cols_list=None):
         self.dataset = dataset
         self.target = target_name
         self.val_size = val_size
         self.train_size = train_size
+        self.additional_cols_list=additional_cols_list
         train, validate, test=pre.train_validate_test_split(dataset,train_size,val_size,0)
 
-        train=train._get_numeric_data()
-        validate=validate._get_numeric_data()
-        test=test._get_numeric_data()
+        # train=train._get_numeric_data()
+        # validate=validate._get_numeric_data()
+        # test=test._get_numeric_data()
 
-        self.X_train=train.drop([target_name], axis = 1)
+        X_train=train.drop([target_name], axis = 1)
         self.y_train = train.loc[:,target_name]
-        self.X_val=validate.drop([target_name], axis = 1)
+        X_val=validate.drop([target_name], axis = 1)
         self.y_val = validate.loc[:,target_name]
-        self.X_test=test.drop([target_name], axis = 1)
+        X_test=test.drop([target_name], axis = 1)
         self.y_test = test.loc[:,target_name]
+
+        self.X_train_add_cols=X_train.loc[:,additional_cols_list]
+        self.X_test_add_cols=X_test.loc[:,additional_cols_list]
+        self.X_val_add_cols=X_val.loc[:,additional_cols_list]
+
+        self.X_val=X_val.drop(additional_cols_list, axis = 1)
+        self.X_train=X_train.drop(additional_cols_list, axis = 1)
+        self.X_test=X_test.drop(additional_cols_list, axis = 1)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
         if not isExist:
             os.makedirs(self.log_dir_path)
         
-        self.models = "models"
-        isExist = os.path.exists(self.models)
+        self.model_dir_path = "models"
+        isExist = os.path.exists(self.model_dir_path)
         if not isExist:
-            os.makedirs(self.models)
+            os.makedirs(self.model_dir_path)
 
     def linear_models(self,select_model:str,tuner_parameters=None):
         timestamp = copy.copy(timestamp_var)
@@ -386,33 +396,33 @@ class Regressors:
             optimizer=keras.optimizers.Adam(
             hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4,1e-4,1e-5,1e-6])),
             loss='mean_absolute_error',
-            metrics=['mean_absolute_error'])
+            metrics='mean_absolute_error')
         return model
 
-    def dnn_sequential_model(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
+    def dnn_sequential_model_opt(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
         """
 
         """       
                 
-        timestamp = copy.copy(timestamp_var)
-        sys.stdout = Logger(f"{self.log_dir_path}/DNN-{timestamp}.log")
-        LOG_DIR = f'{self.log_dir_path}/DNN-LOG-DIR-{timestamp}'
+        self.timestamp = copy.copy(timestamp_var)
+        sys.stdout = Logger(f"{self.log_dir_path}/DNN-{self.timestamp}.log")
+        LOG_DIR = f'{self.log_dir_path}/DNN-LOG-DIR-{self.timestamp}'
         tensorboard = TensorBoard(log_dir=LOG_DIR)    
         
-        tuner = RandomSearch(
+        self.tuner = RandomSearch(
             self.build_model,
-            objective='val_mean_absolute_error',        
+            objective=keras_tuner.Objective("val_mean_absolute_error", direction="min"),        
             max_trials=num_max_trials,
             executions_per_trial=num_executions_per_trial,
             overwrite=True,
-            directory=f'{self.log_dir_path}/DNN-TUNER-DIR-{timestamp}',
+            directory=f'{self.log_dir_path}/DNN-TUNER-DIR-{self.timestamp}',
             project_name=LOG_DIR)
 
         print("\n########################")
         print(" Search for best model")    
         print("########################\n")
 
-        tuner.search(x=self.X_train,
+        self.tuner.search(x=self.X_train,
                     y=self.y_train,
                     epochs=num_epochs,
                     batch_size=num_batch_size,
@@ -422,27 +432,120 @@ class Regressors:
         print("\n########################")
         print("Search Space Summary")    
         print("########################\n")
-        tuner.search_space_summary()
+        self.tuner.search_space_summary()
 
         print("\n########################")
         print("Results Summary")    
         print("########################\n")
         
-        tuner.results_summary()
-        from functools import partial
-        import collections
+        self.tuner.results_summary()
 
-        filename=f'{self.models}/DNN-MODEL-{timestamp}.pickle'
-        dictionary = collections.defaultdict(partial(collections.defaultdict, int))
-
-        with open(filename, 'wb') as pickle_file:
-            pickle.dump(dictionary, pickle_file)
-        # pickle.dump(dictionary, "wb")
-
-
-        # pickle.dump(tuner, open(dictionary, "wb"))
+        self.dnn_filename=f'{self.model_dir_path}/DNN-MODEL-{self.timestamp}.pickle'
         
+        with open(self.dnn_filename, "wb") as f:
+            pickle.dump(self.tuner, f)
+    
+    def dnn_best_model(self,best_model_num, epoch,batchsize):
+        
+        with open(self.dnn_filename, 'rb') as file:
+            tuner=pickle.load(file)
 
+        tuner.results_summary()
+
+        models = tuner.get_best_models(num_models=2)
+        model = models[0]
+        model.build(self.X_train.shape)
+        model.summary()
+
+        history = History()
+
+        #Configure the model
+        model.compile(optimizer='adam',loss="mean_squared_error",metrics=["mean_absolute_error"])
+        history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
+        result = model.evaluate(self.X_test,self.y_test)
+
+        for i in range(len(model.metrics_names)):
+            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
+
+        # list all data in history
+        print(history.history.keys())
+
+        figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
+        axes[0].plot(history.history['mean_absolute_error'])
+        axes[0].plot(history.history['val_mean_absolute_error'],color='b')
+        axes[0].set_title('Model Training & Validation loss a/cross epochs')
+        axes[0].set_ylabel('Loss')
+        # axes[0].set_ylim([0, 1])
+        axes[0].set_xlabel('epoch')
+        axes[0].legend(['train', 'test'], loc='upper left')
+
+        # summarize history for loss
+        axes[1].plot(history.history['val_loss'])
+        axes[1].plot(history.history['loss'],color='b')
+        axes[1].set_title('model loss')
+        axes[1].set_ylabel('loss')
+        # axes[1].set_ylim([0, 1])
+        axes[1].set_xlabel('epoch')
+        axes[1].legend([ 'validation loss', 'train'], loc='upper left')
+        plt.show()
+
+        model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+        
+        y_prediction = model.predict(self.X_test)
+        self.predicted=y_prediction
+        self.actual=self.y_test
+        # self.predicted = np.argmax (y_prediction, axis = 1)
+        # self.actual=np.argmax(self.y_test, axis=1)
+
+        self.model=model
+    
+    def model_metrics(self):
+        
+        print('\n')
+        print("Score: ", metrics.r2_score(self.actual, self.predicted))
+        print('\n')
+        
+        pred_table = pd.DataFrame()
+        pred_table['actual'] = self.actual
+        pred_table['predicted'] = self.predicted
+
+        self.pred_table=pred_table.reset_index()
+        self.pred_table = self.pred_table[self.pred_table.columns.drop((self.pred_table.filter(regex='ndex')))]
+        
+        self.X_test_add_cols=self.X_test_add_cols.reset_index()
+        self.X_test_add_cols = self.X_test_add_cols[self.X_test_add_cols.columns.drop((self.X_test_add_cols.filter(regex='ndex')))]
+        
+        prediction_dataset = pd.concat([self.X_test_add_cols,self.pred_table], axis=1)
+        prediction_dataset.to_csv('IntTesting-prediction-dataset.csv')
+
+        return prediction_dataset
+
+    def ext_testing(self,ext_testing_dataset):
+
+        self.ext_X_test=ext_testing_dataset.drop([self.target], axis = 1)
+        self.ext_y_test = ext_testing_dataset.loc[:,self.target]
+
+        self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
+        self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
+        
+        score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
+
+        y_prediction = self.model.predict(self.ext_X_test)
+        
+        print('\n')
+        print('Metrics: ',score)
+        
+        pred_table = pd.DataFrame()
+        pred_table['actual'] = self.ext_y_test
+        pred_table['predicted'] = y_prediction
+        
+        self.ext_X_test_add_cols=self.ext_X_test_add_cols.reset_index()
+        self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
+        
+        prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
+        prediction_dataset.to_csv('ExtTesting-prediction-dataset.csv')
+        return prediction_dataset
 
 class Classifiers:
     """

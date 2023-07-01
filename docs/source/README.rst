@@ -5,7 +5,7 @@ ReadMe
 ..         :target: https://badge.fury.io/py/easycheml
 ..         :alt: PyPI version
 .. .. image:: https://travis-ci.com/pycroscopy/easycheml.svg?branch=master
-..         :target: https://travis-ci.com/pycroscopy/easycheml
+..         :target: https:/z/travis-ci.com/pycroscopy/easycheml
 ..         :alt: Build Status
 .. .. image:: https://readthedocs.org/projects/easycheml/badge/?version=latest
 ..         :target: https://easycheml.readthedocs.io/en/latest/?badge=latest

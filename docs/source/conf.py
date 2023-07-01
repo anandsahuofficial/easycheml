@@ -9,6 +9,12 @@ author = 'AnandSahu'
 release = '0.1'
 version = '0.1'
 
+#--path-setup
+
+import os
+import sys
+sys.path.insert(0, os.path.abspath('/home/anandsahu/myproject/smc/easycheml/easycheml'))
+
 # -- General configuration
 
 extensions = [
@@ -17,6 +23,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon'
 ]
 
 intersphinx_mapping = {
