@@ -250,7 +250,6 @@ class Regressors:
         if select_model=='Ridge':        
             model=linear_model.Ridge()
         
-    
         pass
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
