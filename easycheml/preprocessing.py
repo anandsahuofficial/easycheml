@@ -5,12 +5,13 @@ import numpy as np
 
 class PreProcessing:
 
-    def __init__(self,dataset,target_name,VarianceThreshold_value,multicollinear_threshold,additional_cols_list=None):
+    def __init__(self,dataset,target_name,VarianceThreshold_value,multicollinear_threshold,scaling_method,additional_cols_list=None):
         self.dataset = dataset
         self.targetname = target_name
         self.additional_cols_list = additional_cols_list
         self.VarianceThreshold_value=VarianceThreshold_value
         self.multicollinear_threshold=multicollinear_threshold
+        self.scaling_method=scaling_method
     
     def load_data(self):   
         data = pd.read_excel(self.dataset, index_col=0)  
@@ -63,9 +64,61 @@ class PreProcessing:
                         
         self.features_data=self.features_data.drop(columns=col_corr,axis=1)
 
-    def data_scaler():
-        pass
+    def normalize_features(self):
+        """
+        Normalize features in a Pandas DataFrame using specified normalization method.
+        
+        Parameters:
+        df (DataFrame): Input DataFrame with features to be normalized.
+        method (str): Normalization method to use. Options are 'min_max', 'z_score', 'robust', 'unit_vector', or '0_1'.
+                    Default is 'min_max'.
+        
+        Returns:
+        DataFrame: New DataFrame with normalized features.
 
+        # Example usage:
+        # Assuming df is your DataFrame with multiple columns
+        # normalized_df = normalize_features(df, method='min_max')
+        """
+        # Copy the input DataFrame to avoid modifying the original
+        # normalized_df = self.features_data.copy()
+        
+        # Iterate over each column (feature) in the DataFrame
+        for column in self.features_data.columns:
+            # Skip non-numeric columns
+            if not pd.api.types.is_numeric_dtype(self.features_data[column]):
+                continue
+            
+            # Select the normalization method
+            if self.scaling_method == 'min_max':
+                # Min-max scaling for the current feature
+                min_val = self.features_data[column].min()
+                max_val = self.features_data[column].max()
+                self.features_data[column] = (self.features_data[column] - min_val) / (max_val - min_val)
+            elif self.scaling_method == 'z_score':
+                # Z-score normalization for the current feature
+                mean_val = self.features_data[column].mean()
+                std_val = self.features_data[column].std()
+                self.features_data[column] = (self.features_data[column] - mean_val) / std_val
+            elif self.scaling_method == 'robust':
+                # Robust scaling for the current feature
+                median_val = self.features_data[column].median()
+                q1 = self.features_data[column].quantile(0.25)
+                q3 = self.features_data[column].quantile(0.75)
+                iqr = q3 - q1
+                self.features_data[column] = (self.features_data[column] - median_val) / iqr
+            elif self.scaling_method == 'unit_vector':
+                # Unit vector scaling for the current feature
+                norm = (self.features_data[column] ** 2).sum() ** 0.5
+                self.features_data[column] = self.features_data[column] / norm
+            elif self.scaling_method == '0_1_direct':
+                # Directly scale features to the range [0, 1] without division by zero
+                max_val = self.features_data[column].max()
+                if max_val != 0:
+                    self.features_data[column] = self.features_data[column] / max_val
+                else:
+                    self.features_data[column] = 0  # Set all values to 0 if max_val is 0
+        
     def preprocess_data(self):
         """
         This module get data from user and preprocess the data according to the form acceptable to 
@@ -108,6 +161,7 @@ class PreProcessing:
         self.remove_duplicate_columns()
         self.remove_nonvariance_data()
         self.remove_multicollinearity()
+        self.normalize_features()
         self.cleaned_dataset = pd.concat([additional_cols, target,self.features_data], axis=1)
         print("\nShape of dataset after Preprocessing : ", self.cleaned_dataset.shape)        
         return self.cleaned_dataset
