@@ -253,6 +253,28 @@ class Regressors:
         pass
     
     def ensemble_models(self,select_model:str,tuner_parameters=None):
+        """
+        
+        Args:
+            select_model (str): _description_
+            tuner_parameters (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+
+        Example
+
+        parameters = {
+                        'n_estimators' :[50,100,200,300,400,500,600,700,800,900,1000],
+                        'criterion' : ["squared_error", "friedman_mse", "absolute_error"],
+                        'max_depth' : [3,5,7,9,11,13,15,17,19,21,23,25,27,29,31],
+                        'min_samples_split' : [5,10,20,30,40,50,60,70,80,90,100],
+
+                        'min_samples_leaf':[5,10,20,30,40,50,60,70,80,90,100],
+                        }
+        # model.ensemble_models("RF",parameters)
+        # model.compare_ml_models(None,None)
+        """
         
         timestamp = copy.copy(timestamp_var)
         sys.stdout = Logger(f"{self.log_dir_path}/ensemble_model-{select_model}-logfile-{timestamp}.log")
@@ -297,6 +319,8 @@ class Regressors:
         print("#########################################\n")
         
         filename=f'{self.models}/{select_model}-{timestamp}.pickle'
+        # filename=f'{model}/{select_model}-{timestamp}.pickle'
+
         pickle.dump(model, open(filename, "wb"))
 
         return select_model, r2_score_test,mse_test, mae_test
@@ -401,6 +425,9 @@ class Regressors:
     def dnn_sequential_model_opt(self,num_max_trials,num_executions_per_trial,num_epochs,num_batch_size):
         """
 
+        Example
+
+        # model.dnn_sequential_model_opt(num_max_trials=5,num_executions_per_trial=3,num_epochs=1,num_batch_size=64)
         """       
                 
         self.timestamp = copy.copy(timestamp_var)
@@ -443,23 +470,26 @@ class Regressors:
         
         with open(self.dnn_filename, "wb") as f:
             pickle.dump(self.tuner, f)
-    
-    def dnn_best_model(self,best_model_num, epoch,batchsize):
-        
-        with open(self.dnn_filename, 'rb') as file:
-            tuner=pickle.load(file)
 
-        tuner.results_summary()
+    def dnn_compile_evaluate_model(self,epoch,batchsize):
+        """_summary_
 
-        models = tuner.get_best_models(num_models=2)
-        model = models[0]
-        model.build(self.X_train.shape)
-        model.summary()
+        Args:
+            epoch (_type_): _description_
+            batchsize (_type_): _description_
+
+        Example
+        # model.dnn_compile_evaluate_model(epoch=20,batchsize=64)
+        """
+        self.timestamp = copy.copy(timestamp_var)
 
         history = History()
 
+        model=self.model
         #Configure the model
-        model.compile(optimizer='adam',loss="mean_squared_error",metrics=["mean_absolute_error"])
+        # model.compile(optimizer='adam',loss="mean_squared_error",metrics=["mean_absolute_error"])
+        model.compile(optimizer='adam',loss="mean_squared_error",metrics=["mean_absolute_percentage_error"])
+
         history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
         result = model.evaluate(self.X_test,self.y_test)
 
@@ -470,8 +500,12 @@ class Regressors:
         print(history.history.keys())
 
         figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
-        axes[0].plot(history.history['mean_absolute_error'])
-        axes[0].plot(history.history['val_mean_absolute_error'],color='b')
+        # axes[0].plot(history.history['mean_absolute_error'])
+        # axes[0].plot(history.history['val_mean_absolute_error'],color='b')
+
+        axes[0].plot(history.history['mean_absolute_percentage_error'])
+        axes[0].plot(history.history['val_mean_absolute_percentage_error'],color='b')
+
         axes[0].set_title('Model Training & Validation loss a/cross epochs')
         axes[0].set_ylabel('Loss')
         # axes[0].set_ylim([0, 1])
@@ -489,16 +523,134 @@ class Regressors:
         plt.show()
 
         model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
-        score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+        result=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+
+        #Print the results
+        for i in range(len(model.metrics_names)):
+            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
         
         y_prediction = model.predict(self.X_test)
         self.predicted=y_prediction
         self.actual=self.y_test
         # self.predicted = np.argmax (y_prediction, axis = 1)
         # self.actual=np.argmax(self.y_test, axis=1)
+    
+    def dnn_best_model(self,num_top_model:int,select_model_num:int):
+        """
+
+        Example
+        # model.dnn_best_model(num_top_model=5,select_model_num=1)
+
+        """
+        
+        with open(self.dnn_filename, 'rb') as file:
+            tuner=pickle.load(file)
+
+        tuner.results_summary()
+
+        models = tuner.get_best_models(num_models=num_top_model)
+        model = models[select_model_num]
+        model.build(self.X_train.shape)
+        model.summary()
+
+        # history = History()
+
+        # #Configure the model
+        # model.compile(optimizer='adam',loss="mean_squared_error",metrics=["mean_absolute_error"])
+        # history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
+        # result = model.evaluate(self.X_test,self.y_test)
+
+        # for i in range(len(model.metrics_names)):
+        #     print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
+
+        # # list all data in history
+        # print(history.history.keys())
+
+        # figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
+        # axes[0].plot(history.history['mean_absolute_error'])
+        # axes[0].plot(history.history['val_mean_absolute_error'],color='b')
+        # axes[0].set_title('Model Training & Validation loss a/cross epochs')
+        # axes[0].set_ylabel('Loss')
+        # # axes[0].set_ylim([0, 1])
+        # axes[0].set_xlabel('epoch')
+        # axes[0].legend(['train', 'test'], loc='upper left')
+
+        # # summarize history for loss
+        # axes[1].plot(history.history['val_loss'])
+        # axes[1].plot(history.history['loss'],color='b')
+        # axes[1].set_title('model loss')
+        # axes[1].set_ylabel('loss')
+        # # axes[1].set_ylim([0, 1])
+        # axes[1].set_xlabel('epoch')
+        # axes[1].legend([ 'validation loss', 'train'], loc='upper left')
+        # plt.show()
+
+        # model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        # score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+        
+        # y_prediction = model.predict(self.X_test)
+        # self.predicted=y_prediction
+        # self.actual=self.y_test
+        # # self.predicted = np.argmax (y_prediction, axis = 1)
+        # self.actual=np.argmax(self.y_test, axis=1)
 
         self.model=model
     
+    # def dnn_custom_model(self):
+    #     model = models.Sequential()
+    #     print(self.X_train.shape)
+    #     model.add(layers.Dense(150,input_dim = self.X_train.shape[1],activation="relu"))
+    #     model.add(layers.Dense(350,activation="relu"))
+    #     model.add(layers.Dense(350,activation="relu"))
+    #     model.add(layers.Dense(350,activation="relu"))
+    #     model.add(layers.Dense(350,activation="relu"))
+        
+    #     model.add(layers.Dense(1,activation = "linear"))    
+
+    #     #Configure the model
+    #     # model.compile(optimizer='adam',loss="mean_absolute_error",
+    #     # metrics=["mean_absolute_error"])
+    #     #Train the model
+    #     # model.fit(self.X_train,self.y_train, validation_data= (self.X_val,self.y_val),epochs=num_epoch,batch_size=num_batch_size)
+    #     self.model=model
+
+    def dnn_custom_model(self, params):
+        """
+        Constructs a custom deep neural network (DNN) model based on the provided parameters.
+
+        Args:
+            params (dict): A dictionary containing the parameters for constructing the DNN model.
+                - 'input_dim' (int): Input dimensionality of the first layer.
+                - 'layer_sizes' (list of int): List containing the number of neurons for each hidden layer.
+                - 'activations' (list of str): List containing the activation functions for each hidden layer.
+                - 'dropout_rates' (optional, list of float): List containing the dropout rates for each hidden layer.
+
+        Example:
+            To construct a DNN model with the following parameters:
+            - Input dimension: 10
+            - Hidden layer sizes: [150, 350, 350, 350, 350]
+            - Activation functions: ["relu", "relu", "relu", "relu", "relu"]
+            - Dropout rates: [0.2, 0.3, 0.4, 0.5]
+
+            >>> dnn_params = {
+            ...     'input_dim': 10,
+            ...     'layer_sizes': [150, 350, 350, 350, 350],
+            ...     'activations': ["relu", "relu", "relu", "relu", "relu"],
+            ...     'dropout_rates': [0.2, 0.3, 0.4, 0.5]
+            ... }
+            >>> self.dnn_custom_model(dnn_params)
+        """
+        model = models.Sequential()
+        model.add(layers.Dense(params['layer_sizes'][0], input_dim=self.X_train.shape[1], activation=params['activations'][0]))
+        for size, activation, dropout_rate in zip(params['layer_sizes'][1:], params['activations'][1:], params.get('dropout_rates', [])):
+            model.add(layers.Dense(size, activation=activation))
+            if dropout_rate:
+                model.add(layers.Dropout(dropout_rate))
+        model.add(layers.Dense(1, activation="linear"))
+        
+        self.model = model
+
+        
     def model_metrics(self):
         
         print('\n')
@@ -528,12 +680,16 @@ class Regressors:
         self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
         self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
         
-        score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
+        print("self.ext_X_test",self.ext_X_test.shape)
+        print("self.ext_y_test",self.ext_y_test.shape)
+
+        # score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
 
         y_prediction = self.model.predict(self.ext_X_test)
+        print(y_prediction)
         
         print('\n')
-        print('Metrics: ',score)
+        # print('Metrics: ',score)
         
         pred_table = pd.DataFrame()
         pred_table['actual'] = self.ext_y_test

@@ -118,7 +118,20 @@ class PreProcessing:
                     self.features_data[column] = self.features_data[column] / max_val
                 else:
                     self.features_data[column] = 0  # Set all values to 0 if max_val is 0
-        
+    
+    def separate_features_target(self):
+        loaded_data=self.load_data()
+        print("\nShape of dataset before Preprocessing : ", loaded_data.shape)
+
+        self.target = loaded_data.loc[:,self.targetname]
+        self.additional_cols=loaded_data.loc[:, self.additional_cols_list]
+        self.features_data=loaded_data.drop([self.targetname], axis = 1)
+    
+    def join_features_target(self):
+        self.cleaned_dataset = pd.concat([self.additional_cols, self.target,self.features_data], axis=1)
+        print("\nShape of dataset after Preprocessing : ", self.cleaned_dataset.shape)        
+        return self.cleaned_dataset
+
     def preprocess_data(self):
         """
         This module get data from user and preprocess the data according to the form acceptable to 
@@ -150,20 +163,22 @@ class PreProcessing:
         print("Preprocessing Data ..")
         print("#########################################\n")
 
-        loaded_data=self.load_data()
-        print("\nShape of dataset before Preprocessing : ", loaded_data.shape)
+        # loaded_data=self.load_data()
+        # print("\nShape of dataset before Preprocessing : ", loaded_data.shape)
 
-        target = loaded_data.loc[:,self.targetname]
-        additional_cols=loaded_data.loc[:, self.additional_cols_list]
-        self.features_data=loaded_data.drop([self.targetname], axis = 1)
-
+        # target = loaded_data.loc[:,self.targetname]
+        # additional_cols=loaded_data.loc[:, self.additional_cols_list]
+        # self.features_data=loaded_data.drop([self.targetname], axis = 1)
+        self.separate_features_target()    
         self.remove_nonnumeric_data()
         self.remove_duplicate_columns()
         self.remove_nonvariance_data()
         self.remove_multicollinearity()
         self.normalize_features()
-        self.cleaned_dataset = pd.concat([additional_cols, target,self.features_data], axis=1)
-        print("\nShape of dataset after Preprocessing : ", self.cleaned_dataset.shape)        
+        # self.cleaned_dataset = pd.concat([self.additional_cols, self.target,self.features_data], axis=1)
+        # print("\nShape of dataset after Preprocessing : ", self.cleaned_dataset.shape) 
+
+        self.cleaned_dataset=self.join_features_target()       
         return self.cleaned_dataset
 
     def train_validate_test_split(df, train_percent, validate_percent,seed):
