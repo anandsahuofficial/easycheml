@@ -194,6 +194,21 @@ class FeatureEngineering:
         sns.kdeplot(df[target], label = "SMOGN")        
         return df
 
+    def categorize_target(data,oldtargetname:str,newtargetnname:str,bins:list, labels:list):
+        df_Categorical = data.copy()
+        category = pd.cut(df_Categorical[oldtargetname],bins=bins,labels=labels)
+
+        df_Categorical.insert(2,newtargetnname, category)
+        df_Categorical = df_Categorical[[newtargetnname]]
+        df_Dataset_cat= pd.concat([df_Categorical,data],axis =1 )
+
+        # dropping useless columns
+
+        df_Dataset_cat = df_Dataset_cat.drop([oldtargetname], axis = 1)
+        print('Category counts: ',df_Dataset_cat[newtargetnname].value_counts())
+    
+        return df_Dataset_cat
+
 class Regressors:
     """
     Parameter
@@ -468,8 +483,8 @@ class Regressors:
 
         self.dnn_filename=f'{self.model_dir_path}/DNN-MODEL-{self.timestamp}.pickle'
         
-        with open(self.dnn_filename, "wb") as f:
-            pickle.dump(self.tuner, f)
+        # with open(self.dnn_filename, "wb") as f:
+            # pickle.dump(self.tuner, f)
 
     def dnn_compile_evaluate_model(self,epoch,batchsize):
         """_summary_
@@ -522,7 +537,7 @@ class Regressors:
         axes[1].legend([ 'validation loss', 'train'], loc='upper left')
         plt.show()
 
-        model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        # model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
         result=model.evaluate(np.array(self.X_test), np.array(self.y_test))
 
         #Print the results
@@ -649,12 +664,42 @@ class Regressors:
         model.add(layers.Dense(1, activation="linear"))
         
         self.model = model
+    
+    def mean_baseline(self):
+        """
+        Calculate the mean baseline prediction and evaluate its performance using Mean Absolute Error (MAE).
 
+        Args:
+            y_train (array-like): Array containing the target variable (dependent variable) values in the training set.
+            y_test (array-like): Array containing the target variable (dependent variable) values in the test set.
+
+        Returns:
+            float: Mean Absolute Error (MAE) of the mean baseline predictions.
+        """
+        # Calculate the mean of the target variable in the training set
+        mean_prediction = np.mean(self.y_train)
         
+        # Use the mean prediction as the prediction for all samples in the test set
+        mean_predictions = np.full_like(self.y_test, fill_value=mean_prediction)
+        
+        # Calculate the Mean Absolute Error (MAE) between the mean predictions and actual values in the test set
+        mae_baseline = metrics.mean_absolute_error(self.y_test, mean_predictions)
+        
+        return mae_baseline
+
     def model_metrics(self):
         
         print('\n')
-        print("Score: ", metrics.r2_score(self.actual, self.predicted))
+        # print("r2_Score: ", metrics.r2_score(self.actual, self.predicted))
+        print("Model Baseline:", self.mean_baseline())
+
+        MAPE=(metrics.mean_absolute_percentage_error(self.actual, self.predicted))*100
+        MAE = metrics.mean_absolute_error(self.actual, self.predicted)
+
+        print("MAPE: ", MAPE)
+        print("MAE",MAE)
+
+
         print('\n')
         
         pred_table = pd.DataFrame()
@@ -677,19 +722,19 @@ class Regressors:
         self.ext_X_test=ext_testing_dataset.drop([self.target], axis = 1)
         self.ext_y_test = ext_testing_dataset.loc[:,self.target]
 
-        self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
+        # self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
+        self.ext_X_test_add_cols=self.ext_X_test.loc[:,list(set(self.additional_cols_list) & set(self.ext_X_test.columns))]
+
         self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
         
-        print("self.ext_X_test",self.ext_X_test.shape)
-        print("self.ext_y_test",self.ext_y_test.shape)
+        # print("self.ext_X_test",self.ext_X_test.shape)
+        # print("self.ext_y_test",self.ext_y_test.shape)
 
-        # score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
-
+        score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
         y_prediction = self.model.predict(self.ext_X_test)
-        print(y_prediction)
-        
-        print('\n')
-        # print('Metrics: ',score)
+
+        MAPE=(metrics.mean_absolute_percentage_error(self.ext_y_test, y_prediction))*100
+        print("MAPE", MAPE)
         
         pred_table = pd.DataFrame()
         pred_table['actual'] = self.ext_y_test
@@ -699,8 +744,10 @@ class Regressors:
         self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
         
         prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
+        prediction_dataset=prediction_dataset.T.drop_duplicates().T    
+
         prediction_dataset.to_csv('ExtTesting-prediction-dataset.csv')
-        return prediction_dataset
+        return prediction_dataset, MAPE
 
 class Classifiers:
     """
@@ -724,24 +771,24 @@ class Classifiers:
         # validate=validate._get_numeric_data()
         # test=test._get_numeric_data()
 
-        X_train=train.drop([target_name], axis = 1)
-        y_train = train.loc[:,target_name]
-        X_val=validate.drop([target_name], axis = 1)
-        y_val = validate.loc[:,target_name]
-        X_test=test.drop([target_name], axis = 1)
-        y_test = test.loc[:,target_name]
+        self.X_train=train.drop([target_name], axis = 1)
+        self.y_train = train.loc[:,target_name]
+        self.X_val=validate.drop([target_name], axis = 1)
+        self.y_val = validate.loc[:,target_name]
+        self.X_test=test.drop([target_name], axis = 1)
+        self.y_test = test.loc[:,target_name]
         
-        self.X_train_add_cols=X_train.loc[:,additional_cols_list]
-        self.X_test_add_cols=X_test.loc[:,additional_cols_list]
-        self.X_val_add_cols=X_val.loc[:,additional_cols_list]
+        self.X_train_add_cols=self.X_train.loc[:,additional_cols_list]
+        self.X_test_add_cols=self.X_test.loc[:,additional_cols_list]
+        self.X_val_add_cols=self.X_val.loc[:,additional_cols_list]
 
-        self.X_val=X_val.drop(additional_cols_list, axis = 1)
-        self.X_train=X_train.drop(additional_cols_list, axis = 1)
-        self.X_test=X_test.drop(additional_cols_list, axis = 1)
+        self.X_val=self.X_val.drop(additional_cols_list, axis = 1)
+        self.X_train=self.X_train.drop(additional_cols_list, axis = 1)
+        self.X_test=self.X_test.drop(additional_cols_list, axis = 1)
 
-        self.num_targets=y_train.nunique()
+        self.num_targets=self.y_train.nunique()
 
-        self.y_train, self.y_val,self.y_test = self.target_encoder(y_train,y_val,y_test)
+        # self.y_train, self.y_val,self.y_test = self.target_encoder(self.y_train,self.y_val,self.y_test)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
@@ -764,9 +811,9 @@ class Classifiers:
         y_val_enc = self.endocder.transform(y_val)
         y_test_enc = self.endocder.transform(y_test)
 
-        y_train_enc = to_categorical(y_train_enc)
-        y_val_enc = to_categorical(y_val_enc)
-        y_test_enc = to_categorical(y_test_enc)
+        y_train_enc = to_categorical(y_train_enc, num_classes=self.num_targets)
+        y_val_enc = to_categorical(y_val_enc,num_classes=self.num_targets)
+        y_test_enc = to_categorical(y_test_enc,num_classes=self.num_targets)
         return y_train_enc,y_val_enc, y_test_enc
 
     def linear_models(self,select_model:str,tuner_parameters=None):
@@ -973,7 +1020,75 @@ class Classifiers:
         
         with open(self.dnn_filename, "wb") as f:
             pickle.dump(self.tuner, f)
+    
+    def dnn_compile_evaluate_model(self,optimizer,loss,metrics,epoch,batchsize):
+        """_summary_
+
+        Args:
+            epoch (_type_): _description_
+            batchsize (_type_): _description_
+
+        Example
+        # model.dnn_compile_evaluate_model(epoch=20,batchsize=64)
+        """
+        self.timestamp = copy.copy(timestamp_var)
+
+        history = History()
+
+        model=self.model
+        #Configure the model
+        model.compile(optimizer=optimizer,loss=loss,metrics=[metrics])
+
+        history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
+        result = model.evaluate(self.X_test,self.y_test)
+
+        for i in range(len(model.metrics_names)):
+            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
+
+        # list all data in history
+        print(history.history.keys())
+
+        figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
+    
+        axes[0].plot(history.history['accuracy'])
+        axes[0].plot(history.history['val_accuracy'],color='b')
+
+        axes[0].set_title('Model Training & Validation loss a/cross epochs')
+        axes[0].set_ylabel('Loss')
+        # axes[0].set_ylim([0, 1])
+        axes[0].set_xlabel('epoch')
+        axes[0].legend(['train', 'test'], loc='upper left')
+
+        # summarize history for loss
+        axes[1].plot(history.history['val_loss'])
+        axes[1].plot(history.history['loss'],color='b')
+        axes[1].set_title('model loss')
+        axes[1].set_ylabel('loss')
+        # axes[1].set_ylim([0, 1])
+        axes[1].set_xlabel('epoch')
+        axes[1].legend([ 'validation loss', 'train'], loc='upper left')
+        plt.show()
+
+        # model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        result=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+
+        #Print the results
+        for i in range(len(model.metrics_names)):
+            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
         
+        print("\ny_test",self.y_test)
+        
+        self.predicted = model.predict(self.X_test)
+
+
+        self.predicted = np.argmax (self.predicted, axis = 1)
+        print('\nself.predicted\n',self.predicted)
+        # y_prediction = model.predict(self.X_test)
+        # self.predicted=y_prediction
+        self.actual=self.y_test
+
+        # self.actual=np.argmax(self.y_test, axis=1)
+    
     def dnn_best_model(self,best_model_num, epoch,batchsize):
         # import dill as pickle
         # tuner = pickle.load(open(self.dnn_filename,"rb"))
@@ -989,6 +1104,9 @@ class Classifiers:
         model.summary()
 
         history = History()
+
+        self.y_train = keras.utils.to_categorical(self.y_train, num_classes=self.num_targets)
+        self.y_val = keras.utils.to_categorical(self.y_val, num_classes=self.num_targets)
 
         #Configure the model
         model.compile(optimizer='adam',loss="categorical_crossentropy",metrics=["accuracy"])
@@ -1030,26 +1148,88 @@ class Classifiers:
 
         self.model=model
     
+    def dnn_custom_model(self, params):
+        """
+        Constructs a custom deep neural network (DNN) classification model based on the provided parameters.
+
+        Args:
+            params (dict): A dictionary containing the parameters for constructing the DNN model.
+                - 'input_dim' (int): Input dimensionality of the first layer.
+                - 'layer_sizes' (list of int): List containing the number of neurons for each hidden layer.
+                - 'activations' (list of str): List containing the activation functions for each hidden layer.
+                - 'dropout_rates' (optional, list of float): List containing the dropout rates for each hidden layer.
+
+        Example:
+            To construct a DNN classification model with the following parameters:
+            - Input dimension: 10
+            - Hidden layer sizes: [150, 350, 350, 350, 350]
+            - Activation functions: ["relu", "relu", "relu", "relu", "relu"]
+            - Dropout rates: [0.2, 0.3, 0.4, 0.5]
+
+            >>> dnn_params = {
+            ...     'input_dim': 10,
+            ...     'layer_sizes': [150, 350, 350, 350, 350],
+            ...     'activations': ["relu", "relu", "relu", "relu", "relu"],
+            ...     'dropout_rates': [0.2, 0.3, 0.4, 0.5]
+            ... }
+            >>> self.dnn_custom_classification_model(dnn_params)
+        """
+
+        model = models.Sequential()
+        model.add(layers.Dense(params['layer_sizes'][0], input_dim=self.X_train.shape[1], activation=params['activations'][0]))
+        for size, activation, dropout_rate in zip(params['layer_sizes'][1:], params['activations'][1:], params.get('dropout_rates', [])):
+            model.add(layers.Dense(size, activation=activation))
+            if dropout_rate:
+                model.add(layers.Dropout(dropout_rate))
+        # Modify output layer for classification
+        model.add(layers.Dense(self.num_targets, activation='softmax'))  # Adjust 'num_classes' based on your classification problem
+        self.model = model
+        
+    def accuracy_baseline(self, y_train, y_test):
+        """
+        Calculate the accuracy baseline prediction and evaluate its performance using accuracy score.
+
+        Args:
+            y_train (array-like): Array containing the target variable (dependent variable) values in the training set.
+            y_test (array-like): Array containing the target variable (dependent variable) values in the test set.
+
+        Returns:
+            float: Accuracy score of the baseline predictions.
+        """
+        # Calculate the most frequent class in the training set
+        most_frequent_class = np.argmax(np.bincount(y_train))
+        
+        # Use the most frequent class as the prediction for all samples in the test set
+        baseline_predictions = np.full_like(y_test, fill_value=most_frequent_class)
+        
+        # Calculate the accuracy score between the baseline predictions and actual values in the test set
+        accuracy_baseline = metrics.accuracy_score(y_test, baseline_predictions)
+        
+        return accuracy_baseline
+
+    
     def model_metrics(self):
         
+        print("Accuracy Score: ", metrics.accuracy_score(self.y_test, self.predicted))
         print('\n')
-        print("Accuracy Score: ", metrics.accuracy_score(self.actual, self.predicted))
+        print("Confusion Matrix \n \n",metrics.confusion_matrix(self.y_test, self.predicted))
         print('\n')
-        print("Confusion Matrix \n \n",metrics.confusion_matrix(self.actual, self.predicted))
-        print('\n')
-        print("Classification Report \n \n", metrics.classification_report(self.actual, self.predicted))
+        print("Classification Report \n \n", metrics.classification_report(self.y_test, self.predicted))
 
-        self.actual=self.endocder.inverse_transform(self.actual)
-        self.predicted=self.endocder.inverse_transform(self.predicted)
+        # self.actual=self.endocder.inverse_transform(self.actual)
+        # self.predicted=self.endocder.inverse_transform(self.predicted)
 
         pred_table = pd.DataFrame()
         pred_table['actual'] = self.actual
         pred_table['predicted'] = self.predicted
         
+        self.pred_table=pred_table.reset_index()
+        self.pred_table = self.pred_table[self.pred_table.columns.drop((self.pred_table.filter(regex='ndex')))]
+        
         self.X_test_add_cols=self.X_test_add_cols.reset_index()
         self.X_test_add_cols = self.X_test_add_cols[self.X_test_add_cols.columns.drop((self.X_test_add_cols.filter(regex='ndex')))]
         
-        prediction_dataset = pd.concat([self.X_test_add_cols,pred_table], axis=1)
+        prediction_dataset = pd.concat([self.X_test_add_cols,self.pred_table], axis=1)
         prediction_dataset.to_csv('IntTesting-prediction-dataset.csv')
 
         return prediction_dataset
@@ -1062,38 +1242,36 @@ class Classifiers:
         self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
         self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
         
-        le = LabelEncoder()
-        le.fit(self.ext_y_test)
+        # ext_y_test_enc = self.endocder.transform(self.ext_y_test)
         
-        ext_y_test_enc = le.transform(self.ext_y_test)
-        self.ext_y_test = to_categorical(ext_y_test_enc)
+        # self.ext_y_test = to_categorical(ext_y_test_enc,num_classes=self.num_targets)
 
         score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
         
-        y_prediction = self.model.predict(self.ext_X_test)
-        y_prediction = np.argmax (y_prediction, axis = 1)
-        y_test=np.argmax(self.ext_y_test, axis=1)
+        self.ext_predicted = self.model.predict(self.ext_X_test)
+        self.ext_predicted = np.argmax (self.ext_predicted, axis = 1)
+        # y_test=np.argmax(self.ext_y_test, axis=1)
 
-        print('\n')
-        print('Metrics: ',self.model.metrics_names, score)
+        print('\nMetrics: ',self.model.metrics_names, score)
+        print("\nConfusion Matrix\n",metrics.confusion_matrix(np.array(self.ext_y_test), np.array(self.ext_predicted)))
+        print("\nClassification Report", metrics.classification_report(np.array(self.ext_y_test), np.array(self.ext_predicted)))
 
-        print("Confusion Matrix \n \n",metrics.confusion_matrix(np.array(y_test), np.array(y_prediction)))
-        print('\n')
-        print("Classification Report \n \n", metrics.classification_report(np.array(y_test), np.array(y_prediction)))
-
-        self.actual=le.inverse_transform(y_test)
-        self.predicted=le.inverse_transform(y_prediction)
+        # self.actual=self.endocder.inverse_transform(self.ext_y_test)
+        # self.predicted=self.endocder.inverse_transform(y_prediction)
 
         pred_table = pd.DataFrame()
-        pred_table['actual'] = self.actual
-        pred_table['predicted'] = self.predicted
+        pred_table['actual'] = self.ext_y_test
+        pred_table['predicted'] = self.ext_predicted
         
         self.ext_X_test_add_cols=self.ext_X_test_add_cols.reset_index()
         self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
         
         prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
         prediction_dataset.to_csv('ExtTesting-prediction-dataset.csv')
-        return prediction_dataset
+
+        accuracy= metrics.accuracy_score(self.ext_y_test, self.ext_predicted)
+        print('accuracy',accuracy)
+        return prediction_dataset,accuracy
 
 class Logger(object):
     def __init__(self, filename):

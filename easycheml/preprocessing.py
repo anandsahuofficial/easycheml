@@ -124,7 +124,9 @@ class PreProcessing:
         print("\nShape of dataset before Preprocessing : ", loaded_data.shape)
 
         self.target = loaded_data.loc[:,self.targetname]
-        self.additional_cols=loaded_data.loc[:, self.additional_cols_list]
+        # self.additional_cols=loaded_data.loc[:, self.additional_cols_list]
+        self.additional_cols = loaded_data.loc[:, list(set(self.additional_cols_list) & set(loaded_data.columns))]
+
         self.features_data=loaded_data.drop([self.targetname], axis = 1)
     
     def join_features_target(self):
