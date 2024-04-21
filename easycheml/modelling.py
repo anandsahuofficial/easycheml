@@ -74,9 +74,16 @@ def build_ml_model():
 
 class FeatureEngineering:
 
-    def __init__(self,pandas_dataframe,target_name):
+    def __init__(self,pandas_dataframe,target_name,additional_cols_list):
         self.dataset = pandas_dataframe
         self.targetname = target_name
+        self.additional_cols_list = additional_cols_list
+
+        additional_cols=self.dataset.loc[:, self.additional_cols_list]
+        additional_cols=additional_cols.reset_index()
+        self.additional_cols= additional_cols[additional_cols.columns.drop((additional_cols.filter(regex='ndex')))]
+
+        self.df_without_additional_cols=self.dataset.drop(additional_cols_list, axis = 1)
         
     def feature_thru_correlation(self, lower_threshold, corr_method):
         """
@@ -174,7 +181,60 @@ class FeatureEngineering:
             Relevant_Features =dataset.loc[:, fs.k_feature_names_]
 
         return Relevant_Features
+    
+    def feature_thru_anova(self,num_features):
+        from sklearn.feature_selection import SelectKBest, f_classif
 
+        """
+        Perform feature selection using ANOVA F-measure.
+
+        Args:
+            X_train (DataFrame or array-like): Input features for training.
+            y_train (Series or array-like): Target variable for training.
+            num_features (int): Number of top features to select.
+
+        Returns:
+            selected_features (list): List of selected feature column names.
+        """
+        dataset = self.df_without_additional_cols
+        # Initialize SelectKBest with f_classif scoring function
+        selector = SelectKBest(score_func=f_classif, k=num_features)
+
+        target = dataset.loc[:,self.targetname]
+        features_data=dataset.drop(self.targetname, axis = 1)
+        
+        # Fit selector to the training data
+        selector.fit(features_data, target)
+
+        # Get indices of selected features
+        selected_indices = selector.get_support(indices=True)
+
+        # Get selected feature column names
+        selected_features = features_data.columns[selected_indices].tolist()
+
+        # selected_features_list=selected_features.tolist()
+
+        # Assuming you have imported necessary libraries and loaded your data into X_train and y_train
+
+        # Call the select_features function to select top features
+        # selected_features = select_features(features_data, target, num_features=20)  # Change num_features as needed
+
+        # Use selected features for training
+        features_data_selected = features_data[selected_features]
+
+        feature_dataset = pd.concat([target,features_data_selected], axis=1)
+
+        feature_dataset=feature_dataset.reset_index()
+
+
+        Relevant_Features = pd.concat([self.additional_cols, feature_dataset], axis=1)
+
+        Relevant_Features= Relevant_Features[Relevant_Features.columns.drop((Relevant_Features.filter(regex='ndex')))]
+
+
+
+
+        return Relevant_Features
         
     def generate_synthetic_data(dataset, target, k_value, samp, thres, rel, rel_type,coef):
     
@@ -196,6 +256,7 @@ class FeatureEngineering:
 
     def categorize_target(data,oldtargetname:str,newtargetnname:str,bins:list, labels:list):
         df_Categorical = data.copy()
+
         category = pd.cut(df_Categorical[oldtargetname],bins=bins,labels=labels)
 
         df_Categorical.insert(2,newtargetnname, category)
@@ -206,6 +267,8 @@ class FeatureEngineering:
 
         df_Dataset_cat = df_Dataset_cat.drop([oldtargetname], axis = 1)
         print('Category counts: ',df_Dataset_cat[newtargetnname].value_counts())
+
+
     
         return df_Dataset_cat
 
@@ -759,7 +822,7 @@ class Classifiers:
     val_size: splitsize of the validation dataset
     """
     
-    def __init__(self, dataset,target_name,train_size:float, val_size:float,additional_cols_list=None):
+    def __init__(self, dataset,target_name,train_size:float, val_size:float,encode_target=None,additional_cols_list=None):
         self.dataset = dataset
         self.target = target_name
         self.val_size = val_size
@@ -788,7 +851,13 @@ class Classifiers:
 
         self.num_targets=self.y_train.nunique()
 
-        # self.y_train, self.y_val,self.y_test = self.target_encoder(self.y_train,self.y_val,self.y_test)
+        if encode_target==None:
+            # self.y_train=keras.utils.to_categorical(self.y_train, num_classes=num_classes)
+            # self.y_val=keras.utils.to_categorical(y_train, num_classes=num_classes)
+            # self.y_test=keras.utils.to_categorical(y_train, num_classes=num_classes)
+            pass
+        elif encode_target=='encode':
+            self.y_train, self.y_val,self.y_test = self.target_encoder(self.y_train,self.y_val,self.y_test)
 
         self.log_dir_path = "logfiles"
         isExist = os.path.exists(self.log_dir_path)
@@ -1035,9 +1104,16 @@ class Classifiers:
 
         history = History()
 
+        print('y_train\n', self.y_train)
+        print("X_test",self.X_test.isnull().values.any())
+        print("X_test",self.y_test.isnull().values.any())
+
+
         model=self.model
         #Configure the model
         model.compile(optimizer=optimizer,loss=loss,metrics=[metrics])
+        print("\nself.X_test",self.X_test.shape)
+        print("\nself.y_test",self.y_test.shape)
 
         history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
         result = model.evaluate(self.X_test,self.y_test)
@@ -1070,26 +1146,29 @@ class Classifiers:
         plt.show()
 
         # model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        model.save(f'model.h5')
+
         result=model.evaluate(np.array(self.X_test), np.array(self.y_test))
 
         #Print the results
         for i in range(len(model.metrics_names)):
             print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
         
-        print("\ny_test",self.y_test)
         
         self.predicted = model.predict(self.X_test)
 
 
         self.predicted = np.argmax (self.predicted, axis = 1)
-        print('\nself.predicted\n',self.predicted)
         # y_prediction = model.predict(self.X_test)
         # self.predicted=y_prediction
         self.actual=self.y_test
+        print('\nself.predicted',self.predicted)
+        print('\nself.actual',self.actual)
+
 
         # self.actual=np.argmax(self.y_test, axis=1)
     
-    def dnn_best_model(self,best_model_num, epoch,batchsize):
+    def dnn_best_model(self,num_top_model:int,select_model_num:int):
         # import dill as pickle
         # tuner = pickle.load(open(self.dnn_filename,"rb"))
 
@@ -1098,55 +1177,56 @@ class Classifiers:
 
         tuner.results_summary()
 
-        models = tuner.get_best_models(num_models=2)
-        model = models[0]
+        models = tuner.get_best_models(num_models=num_top_model)
+        model = models[select_model_num]
         model.build(self.X_train.shape)
         model.summary()
 
-        history = History()
+        # history = History()
 
-        self.y_train = keras.utils.to_categorical(self.y_train, num_classes=self.num_targets)
-        self.y_val = keras.utils.to_categorical(self.y_val, num_classes=self.num_targets)
+        # self.y_train = keras.utils.to_categorical(self.y_train, num_classes=self.num_targets)
+        # self.y_val = keras.utils.to_categorical(self.y_val, num_classes=self.num_targets)
 
-        #Configure the model
-        model.compile(optimizer='adam',loss="categorical_crossentropy",metrics=["accuracy"])
-        history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
-        result = model.evaluate(self.X_test,self.y_test)
+        # #Configure the model
+        # model.compile(optimizer='adam',loss="categorical_crossentropy",metrics=["accuracy"])
+        # history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
+        # result = model.evaluate(self.X_test,self.y_test)
 
-        for i in range(len(model.metrics_names)):
-            print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
+        # for i in range(len(model.metrics_names)):
+        #     print("Metric ",model.metrics_names[i],":",str(round(result[i],2)))
 
-        # list all data in history
-        print(history.history.keys())
+        # # list all data in history
+        # print(history.history.keys())
 
-        figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
-        axes[0].plot(history.history['accuracy'])
-        axes[0].plot(history.history['val_accuracy'],color='b')
-        axes[0].set_title('model accuracy')
-        axes[0].set_ylabel('accuracy')
-        axes[0].set_ylim([0, 1])
-        axes[0].set_xlabel('epoch')
-        axes[0].legend(['train', 'test'], loc='upper left')
+        # figure,axes = plt.subplots(nrows=1, ncols=2, figsize=(8,3))
+        # axes[0].plot(history.history['accuracy'])
+        # axes[0].plot(history.history['val_accuracy'],color='b')
+        # axes[0].set_title('model accuracy')
+        # axes[0].set_ylabel('accuracy')
+        # axes[0].set_ylim([0, 1])
+        # axes[0].set_xlabel('epoch')
+        # axes[0].legend(['train', 'test'], loc='upper left')
 
-        # summarize history for loss
-        axes[1].plot(history.history['val_loss'])
-        axes[1].plot(history.history['loss'],color='b')
-        axes[1].set_title('model loss')
-        axes[1].set_ylabel('loss')
-        axes[1].set_ylim([0, 1])
-        axes[1].set_xlabel('epoch')
-        axes[1].legend([ 'validation loss', 'train'], loc='upper left')
-        plt.show()
+        # # summarize history for loss
+        # axes[1].plot(history.history['val_loss'])
+        # axes[1].plot(history.history['loss'],color='b')
+        # axes[1].set_title('model loss')
+        # axes[1].set_ylabel('loss')
+        # axes[1].set_ylim([0, 1])
+        # axes[1].set_xlabel('epoch')
+        # axes[1].legend([ 'validation loss', 'train'], loc='upper left')
+        # plt.show()
 
-        model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
-        score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
+        # model.save(f'{self.model_dir_path}/DNN-bestmodel-{self.timestamp}')
+        # score=model.evaluate(np.array(self.X_test), np.array(self.y_test))
         
-        y_prediction = model.predict(self.X_test)
+        # y_prediction = model.predict(self.X_test)
         
-        self.predicted = np.argmax (y_prediction, axis = 1)
-        self.actual=np.argmax(self.y_test, axis=1)
+        # self.predicted = np.argmax (y_prediction, axis = 1)
+        # self.actual=np.argmax(self.y_test, axis=1)
 
         self.model=model
+    
     
     def dnn_custom_model(self, params):
         """
@@ -1182,7 +1262,7 @@ class Classifiers:
             if dropout_rate:
                 model.add(layers.Dropout(dropout_rate))
         # Modify output layer for classification
-        model.add(layers.Dense(self.num_targets, activation='softmax'))  # Adjust 'num_classes' based on your classification problem
+        model.add(layers.Dense(self.num_targets, activation=params['output_layer_actvfunc']))  # Adjust 'num_classes' based on your classification problem
         self.model = model
         
     def accuracy_baseline(self, y_train, y_test):
@@ -1216,8 +1296,8 @@ class Classifiers:
         print('\n')
         print("Classification Report \n \n", metrics.classification_report(self.y_test, self.predicted))
 
-        # self.actual=self.endocder.inverse_transform(self.actual)
-        # self.predicted=self.endocder.inverse_transform(self.predicted)
+        self.actual=self.endocder.inverse_transform(self.actual)
+        self.predicted=self.endocder.inverse_transform(self.predicted)
 
         pred_table = pd.DataFrame()
         pred_table['actual'] = self.actual
@@ -1242,37 +1322,34 @@ class Classifiers:
         self.ext_X_test_add_cols=self.ext_X_test.loc[:,self.additional_cols_list]
         self.ext_X_test=self.ext_X_test.drop(self.additional_cols_list, axis = 1)
         
-        # ext_y_test_enc = self.endocder.transform(self.ext_y_test)
-        
-        # self.ext_y_test = to_categorical(ext_y_test_enc,num_classes=self.num_targets)
+        ext_y_test_enc = self.endocder.transform(self.ext_y_test)        
+        self.ext_y_test = to_categorical(ext_y_test_enc,num_classes=self.num_targets)
 
-        score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
-        
+        print("\nself.ext_X_test",self.ext_X_test.shape)
+        print("\nself.ext_y_test",self.ext_y_test.shape)
+
+        result=self.model.evaluate(self.ext_X_test, self.ext_y_test)
+
+        #Print the results
+        for i in range(len(self.model.metrics_names)):
+            print("Metric ",self.model.metrics_names[i],":",str(round(result[i],2)))
+
         self.ext_predicted = self.model.predict(self.ext_X_test)
-        self.ext_predicted = np.argmax (self.ext_predicted, axis = 1)
-        # y_test=np.argmax(self.ext_y_test, axis=1)
 
-        print('\nMetrics: ',self.model.metrics_names, score)
-        print("\nConfusion Matrix\n",metrics.confusion_matrix(np.array(self.ext_y_test), np.array(self.ext_predicted)))
-        print("\nClassification Report", metrics.classification_report(np.array(self.ext_y_test), np.array(self.ext_predicted)))
 
-        # self.actual=self.endocder.inverse_transform(self.ext_y_test)
-        # self.predicted=self.endocder.inverse_transform(y_prediction)
-
-        pred_table = pd.DataFrame()
-        pred_table['actual'] = self.ext_y_test
-        pred_table['predicted'] = self.ext_predicted
+        self.ext_predicted = np.argmax (self.predicted, axis = 1)
         
-        self.ext_X_test_add_cols=self.ext_X_test_add_cols.reset_index()
-        self.ext_X_test_add_cols = self.ext_X_test_add_cols[self.ext_X_test_add_cols.columns.drop((self.ext_X_test_add_cols.filter(regex='ndex')))]
         
-        prediction_dataset = pd.concat([self.ext_X_test_add_cols,pred_table], axis=1)
-        prediction_dataset.to_csv('ExtTesting-prediction-dataset.csv')
 
-        accuracy= metrics.accuracy_score(self.ext_y_test, self.ext_predicted)
-        print('accuracy',accuracy)
-        return prediction_dataset,accuracy
 
+        # score=self.model.evaluate(np.array(self.ext_X_test), np.array(self.ext_y_test))
+        # score = self.model.evaluate(self.ext_X_test,self.ext_y_test)
+        # print('score',score)
+        # self.ext_predicted  = np.argmax(self.model.predict(self.ext_X_test), axis=-1)
+
+        return self.ext_y_test, self.ext_predicted
+
+        
 class Logger(object):
     def __init__(self, filename):
         self.terminal = sys.stdout
