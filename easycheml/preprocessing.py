@@ -176,7 +176,11 @@ class PreProcessing:
         self.remove_duplicate_columns()
         self.remove_nonvariance_data()
         self.remove_multicollinearity()
-        # self.normalize_features()
+        if self.scaling_method==None:
+            pass
+        else:
+            print(f"Scaled data using {self.scaling_method}")
+            self.normalize_features()
         # self.cleaned_dataset = pd.concat([self.additional_cols, self.target,self.features_data], axis=1)
         # print("\nShape of dataset after Preprocessing : ", self.cleaned_dataset.shape) 
 
