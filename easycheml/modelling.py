@@ -1105,15 +1105,17 @@ class Classifiers:
         history = History()
 
         print('y_train\n', self.y_train)
-        print("X_test",self.X_test.isnull().values.any())
-        print("X_test",self.y_test.isnull().values.any())
+        # print("X_test",self.X_test.isnull().values.any())
+        # print("X_test",self.y_test.isnull().values.any())
 
 
         model=self.model
         #Configure the model
         model.compile(optimizer=optimizer,loss=loss,metrics=[metrics])
         print("\nself.X_test",self.X_test.shape)
-        print("\nself.y_test",self.y_test.shape)
+        print("\nself.X_test",self.X_test.columns)
+
+        # print("\nself.y_test",self.y_test.shape)
 
         history = model.fit(self.X_train,self.y_train, validation_data=(self.X_val, self.y_val),epochs=epoch,batch_size=batchsize)
         result = model.evaluate(self.X_test,self.y_test)

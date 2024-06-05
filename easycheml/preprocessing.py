@@ -2,6 +2,9 @@ import pandas as pd
 import collections
 import pandas as pd
 import numpy as np
+import pathlib
+ 
+
 
 class PreProcessing:
 
@@ -13,8 +16,13 @@ class PreProcessing:
         self.multicollinear_threshold=multicollinear_threshold
         self.scaling_method=scaling_method
     
-    def load_data(self):   
-        data = pd.read_excel(self.dataset, index_col=0)  
+    def load_data(self):  
+
+        file_extension = pathlib.Path(self.dataset).suffix
+        if file_extension==".xlsx":
+            data = pd.read_excel(self.dataset, index_col=0)  
+        elif file_extension==".csv":
+            data = pd.read_csv(self.dataset,sep=',',low_memory=False)  
         return data
     
     def remove_nonnumeric_data(self):
