@@ -4,7 +4,7 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
-
+readme = "README.md"
 [project]
 name = "easycheml"
 authors = [{name = "AnandSahu", email = "anandsahuofficial@gmail.com"}]

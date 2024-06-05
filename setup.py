@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='easycheml',  
-     version='0.1',
+     version='0.2.1',
      author="Anand Sahu",
      author_email="anandsahuofficial@gmail.com",
      description="A simple tool for using artificial intelligence in chemistry",
