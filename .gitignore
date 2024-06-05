@@ -4,3 +4,4 @@ easycheml.egg-info/
 .cpython-38.pyc
 *.swp
 easycheml/__pycache__/
+dist/
